@@ -87,6 +87,6 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         /// <summary>Usually this is the path to folder which contains the official game launcher.</summary>
         public ReadOnlySpan<char> FullPathOfInstallationDirectory => this.GameExecutablePath.AsSpan(0, this.GameExecutablePath.Length - RelativePathToExecutablePath.Length - 1);
         /// <summary>Usually this is the path to folder which contains the UE game client.</summary>
-        public ReadOnlySpan<char> FullPathOfGameDirectory => this.GameExecutablePath.AsSpan(0, this.GameExecutablePath.Length - RelativePathToExecutablePath.AsSpan(4).Length - 1);
+        public ReadOnlySpan<char> FullPathOfGameDirectory => this.GameExecutablePath.AsSpan(0, this.GameExecutablePath.Length - RelativePathToExecutablePath.AsSpan(4).Length);
     }
 }
