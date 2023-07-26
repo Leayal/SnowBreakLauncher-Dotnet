@@ -20,12 +20,14 @@ public partial class LauncherNewsBanner : UserControl
         this.url = url;
         InitializeComponent();
         this.observer = this.BannerImage.GetObservable(Image.IsVisibleProperty);
-        this.BannerImage.PointerPressed += BannerImage_PointerPressed;
+
+        // Clickable.On(this.BannerImage).Click += this.BannerImage_Click;
+        Clickable.On(this.BannerImage, this.BannerImage_Click);
         this.BannerImage.PointerEntered += BannerImage_PointerEntered;
         this.BannerImage.PointerExited += BannerImage_OnPointerExited;
     }
 
-    private void BannerImage_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    private void BannerImage_Click(Image sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         try
         {

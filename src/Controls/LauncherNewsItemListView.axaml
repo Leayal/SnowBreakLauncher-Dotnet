@@ -18,7 +18,7 @@
 			<DataTemplate DataType="{x:Type controls:NewsInlineTextWrapper}">
 				<TextBlock TextWrapping="Wrap" Background="Transparent"
 						   HorizontalAlignment="Stretch" VerticalAlignment="Center"
-						   Tag="{Binding link}" PointerPressed="NewsItem_PointerPressed">
+						   Loaded="NewsItem_Loaded" Unloaded="NewsItem_Unloaded">
 					<Run Text="[" /><Run Text="{Binding time}" /><Run Text="] " /><Run Text="{Binding title}" />
 				</TextBlock>
 			</DataTemplate>

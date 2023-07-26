@@ -32,15 +32,31 @@ public partial class LauncherNewsItemListView : UserControl
         }
     }
 
-    private void NewsItem_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    private void NewsItem_Loaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        if (sender is TextBlock tblock1 && tblock1.DataContext is NewsInlineTextWrapper data1)
+        if (sender is TextBlock tb)
+        {
+            tb.Tag = Clickable.On(tb, this.LauncherNewsItemListView_Click);
+        }
+    }
+
+    private void LauncherNewsItemListView_Click(TextBlock sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender.DataContext is NewsInlineTextWrapper data1)
         {
             this.NewsItemPressed?.Invoke(data1);
         }
         else if (e.Source is TextBlock tblock2 && tblock2.DataContext is NewsInlineTextWrapper data2)
         {
             this.NewsItemPressed?.Invoke(data2);
+        }
+    }
+
+    private void NewsItem_Unloaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is TextBlock tb && tb.Tag is Clickable<TextBlock> clickable)
+        {
+            clickable.Dispose();
         }
     }
 

@@ -19,13 +19,13 @@ namespace Leayal.SnowBreakLauncher.Controls
             this.isPausing = false;
             carousel.PageTransition = new PageSlide(TimeSpan.FromMilliseconds(500), PageSlide.SlideAxis.Horizontal)
             {
-                SlideInEasing = new CubicEaseIn(),
-                SlideOutEasing = new CubicEaseOut()
+                SlideInEasing = new CubicEaseOut(),
+                SlideOutEasing = new CubicEaseIn()
             };
 
             this.timer = new DispatcherTimer(TimeSpan.FromSeconds(5), DispatcherPriority.Render, this.Timer_Tick);
             this.timer.Stop();
-            this.carousel.ItemsView.CollectionChanged += ItemsView_CollectionChanged;
+            this.carousel.ItemsView.CollectionChanged += this.ItemsView_CollectionChanged;
         }
 
         private void ItemsView_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
