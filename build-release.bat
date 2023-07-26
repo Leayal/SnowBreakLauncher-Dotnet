@@ -14,4 +14,3 @@ IF EXIST "%~dp0\sdk" (
 dotnet.exe publish -c Release -o "release" "src\SnowBreakLauncher.csproj" 
 
 ENDLOCAL
-exit

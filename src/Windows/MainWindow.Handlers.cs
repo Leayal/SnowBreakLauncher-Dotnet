@@ -29,25 +29,13 @@ namespace Leayal.SnowBreakLauncher.Windows
             var httpClient = SnowBreakHttpClient.Instance;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static List<Controls.NewsInlineTextWrapper> ToClassItems(IEnumerable<INewsInlineTextItem> items, int preCount)
+            static List<NewsInlineTextWrapper> ToClassItems(IEnumerable<INewsInlineTextItem> items, int preCount)
             {
-                /*
-                var list = (preCount == -1 ? new Dictionary<TextBlock, CTextBlock>() : new Dictionary<TextBlock, CTextBlock>(preCount));
+                var list = (preCount == -1 ? new List<NewsInlineTextWrapper>() : new List<NewsInlineTextWrapper>(preCount));
                 foreach (var item in items)
                 {
-                    // What a mess
-                    list.Add(new TextBlock() { Text = item.time }, new CTextBlock(new CInline[]
-                    {
-                        new CHyperlink(new CInline[] { new CRun() { Text = item.title } }) { Command = OpenURL, CommandParameter = item.link }
-                    }));
-                }
-                return list;
-                */
-
-                var list = (preCount == -1 ? new List<Controls.NewsInlineTextWrapper>() : new List<Controls.NewsInlineTextWrapper>(preCount));
-                foreach (var item in items)
-                {
-                    list.Add(new Controls.NewsInlineTextWrapper()
+                    if (string.IsNullOrWhiteSpace(item.link)) continue;
+                    list.Add(new NewsInlineTextWrapper()
                     {
                         link = item.link,
                         time = item.time,
@@ -69,6 +57,8 @@ namespace Leayal.SnowBreakLauncher.Windows
                 var list_banners = (listCount_banners == -1 ? new List<LauncherNewsBanner>() : new List<LauncherNewsBanner>(listCount_banners));
                 foreach (var banner in newsFeed.Banners)
                 {
+                    if (string.IsNullOrWhiteSpace(banner.img) || string.IsNullOrWhiteSpace(banner.link)) continue;
+                    
                     this.LauncherNews_Banners.Items.Add(new LauncherNewsBanner(banner.img, banner.link)
                     {
                         HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
@@ -84,9 +74,17 @@ namespace Leayal.SnowBreakLauncher.Windows
         {
             if (obj != null)
             {
-                Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
+                try
+                {
+                    Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
+                }
+                catch { }
             }
         }
+
+        public void Btn_BannerGoLeft_Click(object source, RoutedEventArgs args) => this.carouselAutoplay.GoLeft();
+
+        public void Btn_BannerGoRight_Click(object source, RoutedEventArgs args) => this.carouselAutoplay.GoRight();
 
         private async Task AfterLoaded_Btn_GameStart()
         {

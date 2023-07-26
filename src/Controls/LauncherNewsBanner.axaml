@@ -5,7 +5,7 @@
              mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
              x:Class="Leayal.SnowBreakLauncher.Controls.LauncherNewsBanner">
 	<Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" ColumnDefinitions="*" RowDefinitions="*">
-		<Image Name="BannerImage" IsVisible="False" Stretch="Uniform" StretchDirection="Both"  />
+		<Image Name="BannerImage" IsVisible="False" Stretch="Uniform" StretchDirection="Both" Cursor="Hand" />
 		<ProgressBar IsIndeterminate="True" Name="LoadingSpin" HorizontalAlignment="Stretch" VerticalAlignment="Center" MinHeight="30" Padding="2" />
 	</Grid>
 </UserControl>

@@ -15,8 +15,10 @@
 			<RowDefinition Height="150" MinHeight="100" MaxHeight="200" />
 			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
-		<Grid>
-			<Carousel x:Name="LauncherNews_Banners" />
+		<Grid ColumnDefinitions="Auto,*,Auto">
+			<Button Content="&lt;" VerticalAlignment="Stretch" HorizontalAlignment="Left" Click="Btn_BannerGoLeft_Click" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
+			<Carousel Grid.Column="1" x:Name="LauncherNews_Banners" />
+			<Button Grid.Column="2" Content="&gt;" VerticalAlignment="Stretch" HorizontalAlignment="Right" Click="Btn_BannerGoRight_Click" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
 		</Grid>
 		<TabControl Grid.Row="1" Padding="0" Margin="0">
 			<TabItem Header="Events">
@@ -26,10 +28,10 @@
 				<controls:LauncherNewsItemListView x:Name="LauncherNews_Notices" NewsItemPressed="NewsItem_PointerPressed" />
 			</TabItem>
 		</TabControl>
-		<Button Grid.Row="2" Margin="2" x:Name="Btn_StartGame" Click="Btn_StartGame_Click" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
-			<Grid>
-				<ProgressBar x:Name="ProgressBar_Main" />
-				<TextBlock Name="BtnText_StartGame" Text="Loading launcher UI..." />
+		<Button Grid.Row="2" Margin="2" MinHeight="30" Padding="0" x:Name="Btn_StartGame" Click="Btn_StartGame_Click" HorizontalAlignment="Stretch" VerticalAlignment="Center" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+			<Grid Margin="0">
+				<ProgressBar Padding="0" Margin="0" x:Name="ProgressBar_Main" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+				<TextBlock Padding="0" Margin="0" Name="BtnText_StartGame" Text="Loading launcher UI..." VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" />
 			</Grid>
 		</Button>
 	</Grid>

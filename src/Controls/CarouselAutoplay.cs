@@ -80,6 +80,28 @@ namespace Leayal.SnowBreakLauncher.Controls
             this.isPausing = true;
         }
 
+        private void ResetTimer()
+        {
+            if (this.timer.IsEnabled)
+            {
+                // Recount the timer from the start(?)
+                this.timer.Stop();
+                this.timer.Start();
+            }
+        }
+
+        public void GoLeft()
+        {
+            this.ResetTimer();
+            this.carousel.Previous();
+        }
+
+        public void GoRight()
+        {
+            this.ResetTimer();
+            this.carousel.Next();
+        }
+
         public void StartAutoplay()
         {
             this.isPausing = this.carousel.IsPointerOver;

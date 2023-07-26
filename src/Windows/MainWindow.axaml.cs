@@ -2,16 +2,14 @@
  * This file contains mainly UI manipulation code
 */
 
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using System.IO;
 using System.Diagnostics;
-using Avalonia;
 using System.Collections.Generic;
-using Avalonia.Media.Imaging;
 using System.Threading.Tasks;
 using System.Threading;
-using System.Net.Http;
-using System.Net;
 using Leayal.SnowBreakLauncher.Snowbreak;
 using Leayal.SnowBreakLauncher.Classes;
 using Leayal.SnowBreakLauncher.Controls;
@@ -49,10 +47,14 @@ public partial class MainWindow : Window
                 {
                     case GameStartButtonState.CheckingForUpdates:
                         window.Btn_StartGame.IsEnabled = false;
+                        window.ProgressBar_Main.IsIndeterminate = true;
+                        window.ProgressBar_Main.IsVisible = true;
                         window.BtnText_StartGame.Text = "Checking for game client updates";
                         break;
                     case GameStartButtonState.CanStartGame:
                         window.BtnText_StartGame.Text = "Start game";
+                        window.ProgressBar_Main.IsIndeterminate = false;
+                        window.ProgressBar_Main.IsVisible = false;
                         window.Btn_StartGame.IsEnabled = true;
                         break;
                     case GameStartButtonState.RequiresUpdate:
@@ -61,18 +63,26 @@ public partial class MainWindow : Window
                         break;
                     case GameStartButtonState.StartingGame:
                         window.Btn_StartGame.IsEnabled = false;
+                        window.ProgressBar_Main.IsIndeterminate = true;
+                        window.ProgressBar_Main.IsVisible = true;
                         window.BtnText_StartGame.Text = "Game is starting...";
                         break;
                     case GameStartButtonState.WaitingForGameExit:
                         window.Btn_StartGame.IsEnabled = false;
+                        window.ProgressBar_Main.IsIndeterminate = false;
+                        window.ProgressBar_Main.IsVisible = false;
                         window.BtnText_StartGame.Text = "Game is running...";
                         break;
                     case GameStartButtonState.NeedInstall:
                         window.Btn_StartGame.IsEnabled = true;
+                        window.ProgressBar_Main.IsIndeterminate = false;
+                        window.ProgressBar_Main.IsVisible = false;
                         window.BtnText_StartGame.Text = "Install or select existing data";
                         break;
                     default:
                         window.Btn_StartGame.IsEnabled = false;
+                        window.ProgressBar_Main.IsIndeterminate = true;
+                        window.ProgressBar_Main.IsVisible = true;
                         window.BtnText_StartGame.Text = "Loading launcher UI...";
                         break;
                 }
