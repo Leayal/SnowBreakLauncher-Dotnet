@@ -14,11 +14,14 @@ using System.Net.Http;
 using System.Net;
 using Leayal.SnowBreakLauncher.Snowbreak;
 using Leayal.SnowBreakLauncher.Classes;
+using Leayal.SnowBreakLauncher.Controls;
 
-namespace Leayal.SnowBreakLauncher;
+namespace Leayal.SnowBreakLauncher.Windows;
 
 public partial class MainWindow : Window
 {
+    private readonly CarouselAutoplay carouselAutoplay;
+
     public MainWindow(OfficialJsonConfiguration launcherConfig)
     {
         this._launcherConfig = launcherConfig;
@@ -28,8 +31,8 @@ public partial class MainWindow : Window
         {
             this.Icon = new WindowIcon(bm);
         }
-        // WebRequest.GetSystemWebProxy();
         this.GameStartButtonState = GameStartButtonState.LoadingUI;
+        this.carouselAutoplay = new CarouselAutoplay(this.LauncherNews_Banners);
     }
 
     #region "| GameStartButtonState |"
@@ -66,7 +69,7 @@ public partial class MainWindow : Window
                         break;
                     case GameStartButtonState.NeedInstall:
                         window.Btn_StartGame.IsEnabled = true;
-                        window.BtnText_StartGame.Text = "Install or select already downloaded data";
+                        window.BtnText_StartGame.Text = "Install or select existing data";
                         break;
                     default:
                         window.Btn_StartGame.IsEnabled = false;

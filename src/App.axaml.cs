@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Leayal.SnowBreakLauncher.Classes;
+using Leayal.SnowBreakLauncher.Windows;
 using System;
 using System.IO;
 

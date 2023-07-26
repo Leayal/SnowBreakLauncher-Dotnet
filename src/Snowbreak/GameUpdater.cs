@@ -23,10 +23,11 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         {
             var mgr = this.manager;
             var httpClient = SnowBreakHttpClient.Instance;
-            var localManifest = mgr.Files.GetLocalManifest();
-            var manifestData = await httpClient.GetGameClientManifestAsync(cancellationToken);
-
-            return !string.Equals(localManifest.version, manifestData.version, StringComparison.Ordinal);
+            using (var localManifest = mgr.Files.GetLocalManifest())
+            using (var manifestData = await httpClient.GetGameClientManifestAsync(cancellationToken))
+            {
+                return !string.Equals(localManifest.version, manifestData.version, StringComparison.Ordinal);
+            }
         }
 
         public async Task Task_UpdateClientAsync(CancellationToken cancellationToken = default)

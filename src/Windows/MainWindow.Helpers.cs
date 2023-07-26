@@ -13,7 +13,7 @@ using System.Runtime.CompilerServices;
 using MsBox.Avalonia;
 using Windows.Win32;
 
-namespace Leayal.SnowBreakLauncher
+namespace Leayal.SnowBreakLauncher.Windows
 {
     public partial class MainWindow
     {
@@ -39,8 +39,8 @@ namespace Leayal.SnowBreakLauncher
         {
             ArgumentNullException.ThrowIfNull(ex);
 
-            int screenWidth= PInvoke.GetSystemMetrics(Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
-                screenHeight = PInvoke.GetSystemMetrics(Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
+            int screenWidth= PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
+                screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
                 width = screenWidth / 2,
                 height = screenHeight / 2;
 

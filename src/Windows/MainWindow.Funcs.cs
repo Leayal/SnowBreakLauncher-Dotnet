@@ -16,7 +16,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Leayal.SnowBreakLauncher
+namespace Leayal.SnowBreakLauncher.Windows
 {
     public partial class MainWindow
     {

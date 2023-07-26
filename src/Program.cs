@@ -1,7 +1,7 @@
 ﻿using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls;
-using Leayal.SnowBreakLauncher.Classes;
+using Leayal.SnowBreakLauncher.Windows;
 using System;
 using System.IO;
 using System.Runtime.CompilerServices;

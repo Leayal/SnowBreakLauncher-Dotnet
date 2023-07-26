@@ -6,11 +6,14 @@ using Avalonia;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Leayal.SnowBreakLauncher.Snowbreak;
-using MsBox.Avalonia;
+using System.Collections.Generic;
 using System;
 using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using Leayal.SnowBreakLauncher.Controls;
 
-namespace Leayal.SnowBreakLauncher
+namespace Leayal.SnowBreakLauncher.Windows
 {
     public partial class MainWindow
     {
@@ -18,9 +21,76 @@ namespace Leayal.SnowBreakLauncher
         {
             base.OnLoaded(e);
 
-            // Check if game is installed.
-            string installedDirectory = this._launcherConfig.GameClientInstallationPath;
+            await Task.WhenAll(this.AfterLoaded_Btn_GameStart(), this.AfterLoaded_LauncherNews());
+        }
 
+        private async Task AfterLoaded_LauncherNews()
+        {
+            var httpClient = SnowBreakHttpClient.Instance;
+
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static List<Controls.NewsInlineTextWrapper> ToClassItems(IEnumerable<INewsInlineTextItem> items, int preCount)
+            {
+                /*
+                var list = (preCount == -1 ? new Dictionary<TextBlock, CTextBlock>() : new Dictionary<TextBlock, CTextBlock>(preCount));
+                foreach (var item in items)
+                {
+                    // What a mess
+                    list.Add(new TextBlock() { Text = item.time }, new CTextBlock(new CInline[]
+                    {
+                        new CHyperlink(new CInline[] { new CRun() { Text = item.title } }) { Command = OpenURL, CommandParameter = item.link }
+                    }));
+                }
+                return list;
+                */
+
+                var list = (preCount == -1 ? new List<Controls.NewsInlineTextWrapper>() : new List<Controls.NewsInlineTextWrapper>(preCount));
+                foreach (var item in items)
+                {
+                    list.Add(new Controls.NewsInlineTextWrapper()
+                    {
+                        link = item.link,
+                        time = item.time,
+                        title = item.title
+                    });
+                }
+                return list;
+            }
+
+            using (var newsFeed = await httpClient.GetLauncherNewsAsync())
+            {
+                // var list_notices = AddItems(newsFeed.Notices, newsFeed.NoticeCount);
+                // var list_events = AddItems(newsFeed.Events, newsFeed.EventCount);
+
+                this.LauncherNews_Events.ItemsSource = ToClassItems(newsFeed.Events, newsFeed.EventCount);
+                this.LauncherNews_Notices.ItemsSource = ToClassItems(newsFeed.Notices, newsFeed.NoticeCount);
+
+                var listCount_banners = newsFeed.BannerCount;
+                var list_banners = (listCount_banners == -1 ? new List<LauncherNewsBanner>() : new List<LauncherNewsBanner>(listCount_banners));
+                foreach (var banner in newsFeed.Banners)
+                {
+                    this.LauncherNews_Banners.Items.Add(new LauncherNewsBanner(banner.img, banner.link)
+                    {
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                        VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch
+                    });
+                }
+            }
+
+            this.carouselAutoplay.StartAutoplay();
+        }
+
+        private void NewsItem_PointerPressed(NewsInlineTextWrapper obj)
+        {
+            if (obj != null)
+            {
+                Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
+            }
+        }
+
+        private async Task AfterLoaded_Btn_GameStart()
+        {
+            string installedDirectory = this._launcherConfig.GameClientInstallationPath;
             if (!IsGameExisted(installedDirectory))
             {
                 // Game isn't installed or not detected

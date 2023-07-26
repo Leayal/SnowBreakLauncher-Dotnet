@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "SnowBreakLauncher": {
+      "commandName": "Project",
+      "hotReloadEnabled": false
+    }
+  }
+}

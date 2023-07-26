@@ -62,7 +62,7 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
 #else
             this._processId = this.FindProcessIdFromExistingProcesses();
             var spanOfProcessName = Path.GetFileName(manager.GameExecutablePath.AsSpan());
-            ReadOnlySpan<char> WMI_STR_QueryProcessOps = "SELECT TargetInstance FROM __InstanceOperationEvent WITHIN 0.2 WHERE TargetInstance ISA 'Win32_Process' AND TargetInstance.Name = '";
+            ReadOnlySpan<char> WMI_STR_QueryProcessOps = "SELECT TargetInstance FROM __InstanceOperationEvent WITHIN 0.3 WHERE TargetInstance ISA 'Win32_Process' AND TargetInstance.Name = '";
             // Create a watcher and listen for events
             this.processWatcher = new ManagementEventWatcher(
                 cachedWMI_Scope,
@@ -106,9 +106,9 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         public bool IsGameRunning => (this._gameProcess != null);
         public uint GameProcessId => (this._gameProcess == null ? 0 : unchecked((uint)this._gameProcess.Id));
 
-        private void OnPollingGameProcessExited(Process proc)
+        private void OnPollingGameProcessExited(Process proc, in uint processId)
         {
-            this.OnGameProcessExit(proc);
+            this.OnGameProcessExit(proc, processId);
             this.pollingProcessWatcher.Start();
         }
 
@@ -131,7 +131,7 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
             {
                 ArgumentNullException.ThrowIfNull(tickingCallback);
                 this.callback = tickingCallback;
-                this.timer = new PeriodicTimer(TimeSpan.FromMilliseconds(200));
+                this.timer = new PeriodicTimer(TimeSpan.FromMilliseconds(300));
             }
 
             public void Start()
@@ -182,32 +182,24 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
 
         private void OnGameProcessStart(Process process)
         {
-            Interlocked.Exchange(ref this._gameProcess, process)?.Dispose(); // The old one should be null anyway, but just dispose in case it's not.
-            uint processId = unchecked((uint)process.Id);
             if (process.HasExited)
             {
-                this.OnPollingGameProcessExited(process);
+                Interlocked.Exchange(ref this._gameProcess, null)?.Dispose(); // Dispose the old one if it exists.
+                process.Dispose(); // Dispose this 'miss', too.
             }
             else
             {
+                Interlocked.Exchange(ref this._gameProcess, process)?.Dispose(); // The old one should be null anyway, but just dispose in case it's not.
+                uint processId = unchecked((uint)process.Id);
                 process.RegisterProcessExitCallback(this.OnPollingGameProcessExited, this.waitFinalCancel.Token);
+                this.ProcessStarted?.Invoke(in processId);
             }
-            this.ProcessStarted?.Invoke(in processId);
         }
 
-        private void OnGameProcessExit(Process? process)
+        private void OnGameProcessExit(Process? process, in uint processId)
         {
             var proc = Interlocked.Exchange(ref this._gameProcess, null) ?? process;
-            uint processId;
-            if (proc == null)
-            {
-                processId = 0;
-            }
-            else
-            {
-                processId = unchecked((uint)proc.Id);
-                proc.Dispose();
-            }
+            process?.Dispose();
             this.ProcessExited?.Invoke(in processId);
         }
 #else
