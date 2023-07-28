@@ -4,8 +4,6 @@
 // Reference: https://github.com/damieng/DamienGKit/blob/78839b5494e9516c33d70c02e67b2cf05428149f/CSharp/DamienG.Library/Security/Cryptography/Crc32.cs
 
 using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 
 namespace DamienG.Security.Cryptography;
@@ -25,7 +23,7 @@ public sealed class Crc32 : HashAlgorithm
     public const UInt32 DefaultPolynomial = 0xedb88320u;
     public const UInt32 DefaultSeed = 0xffffffffu;
 
-    static UInt32[] defaultTable;
+    static readonly UInt32[] defaultTable = InitializeTable(DefaultPolynomial);
 
     readonly UInt32 seed;
     readonly UInt32[] table;
@@ -110,7 +108,7 @@ public sealed class Crc32 : HashAlgorithm
     /// <returns>A <see cref="UInt32[]"/> table to be used in calculating a CRC32.</returns>
     internal static UInt32[] InitializeTable(UInt32 polynomial)
     {
-        if (polynomial == DefaultPolynomial && defaultTable != null)
+        if (polynomial == DefaultPolynomial)
             return defaultTable;
 
         var createTable = new UInt32[256];
@@ -124,9 +122,6 @@ public sealed class Crc32 : HashAlgorithm
                     entry >>= 1;
             createTable[i] = entry;
         }
-
-        if (polynomial == DefaultPolynomial)
-            defaultTable = createTable;
 
         return createTable;
     }

@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -23,7 +19,7 @@ public readonly struct PakEntry
 
     private readonly uint GetUIntNumber([CallerMemberName] string? name = null)
     {
-        if (this.element.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number)
+        if (this.element.TryGetProperty(name ?? string.Empty, out var prop) && prop.ValueKind == JsonValueKind.Number)
         {
             return prop.GetUInt32();
         }
@@ -32,7 +28,7 @@ public readonly struct PakEntry
 
     private readonly long GetLongNumber([CallerMemberName] string? name = null)
     {
-        if (this.element.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number)
+        if (this.element.TryGetProperty(name ?? string.Empty, out var prop) && prop.ValueKind == JsonValueKind.Number)
         {
             return prop.GetInt64();
         }
@@ -41,7 +37,7 @@ public readonly struct PakEntry
 
     private readonly long? GetNullableNumber([CallerMemberName] string? name = null)
     {
-        if (this.element.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number)
+        if (this.element.TryGetProperty(name ?? string.Empty, out var prop) && prop.ValueKind == JsonValueKind.Number)
         {
             return prop.GetInt64();
         }
@@ -50,7 +46,7 @@ public readonly struct PakEntry
 
     private readonly string GetString([CallerMemberName] string? name = null)
     {
-        if (this.element.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.String)
+        if (this.element.TryGetProperty(name ?? string.Empty, out var prop) && prop.ValueKind == JsonValueKind.String)
         {
             return prop.GetString() ?? string.Empty;
         }

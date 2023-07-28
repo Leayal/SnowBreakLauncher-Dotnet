@@ -2,12 +2,10 @@
 using Avalonia.Animation;
 using Avalonia.Animation.Easings;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Threading;
 using System;
 using System.Runtime.CompilerServices;
-using System.Security.Principal;
 using System.Threading;
 
 namespace Leayal.SnowBreakLauncher.Controls

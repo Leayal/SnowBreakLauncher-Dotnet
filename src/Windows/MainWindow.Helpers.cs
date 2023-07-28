@@ -6,13 +6,9 @@ using Avalonia;
 using Leayal.SnowBreakLauncher.Classes;
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Net.NetworkInformation;
-using System.Net;
-using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using MsBox.Avalonia;
 using Windows.Win32;
-using MsBox.Avalonia.Base;
 using MsBox.Avalonia.Enums;
 using System.Threading.Tasks;
 

@@ -1,11 +1,7 @@
 ﻿using Avalonia.Input;
 using Avalonia.Media.Imaging;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
-using System.Collections.Generic;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Leayal.SnowBreakLauncher.Classes
 {
@@ -42,7 +38,7 @@ namespace Leayal.SnowBreakLauncher.Classes
             }
             if (WindowIcon.IsValueCreated)
             {
-                WindowIcon.Value.Dispose();
+                WindowIcon.Value?.Dispose();
             }
         }
     }

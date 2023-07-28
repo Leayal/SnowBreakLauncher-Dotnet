@@ -1,14 +1,10 @@
 ﻿using System;
 using System.IO;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Text;
 using System.Threading.Tasks;
 #if !NO_WMI
 using System.Management;
 #endif
 using Leayal.Shared.Windows;
-using Windows.Win32;
 using System.Diagnostics;
 using System.Threading;
 

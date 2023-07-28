@@ -7,7 +7,6 @@ using System.IO;
 using Microsoft.Win32.SafeHandles;
 using System.Runtime.InteropServices;
 using Windows.Win32.Storage.FileSystem;
-using System.Windows.Markup;
 
 namespace Leayal.Shared.Windows
 {

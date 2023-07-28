@@ -2,7 +2,6 @@
  * This file contains mainly UI interaction and UI event handlers
 */
 
-using Avalonia;
 using Avalonia.Interactivity;
 using Leayal.SnowBreakLauncher.Snowbreak;
 using System.Collections.Generic;

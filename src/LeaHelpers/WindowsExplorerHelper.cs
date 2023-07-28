@@ -1,13 +1,10 @@
 ﻿using System;
 using System.IO;
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using Shell32 = global::Windows.Win32.UI.Shell;
 using System.Reflection;
-using Leayal.Shared;
 
 namespace Leayal.Shared.Windows
 {

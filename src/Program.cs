@@ -3,7 +3,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls;
 using Leayal.SnowBreakLauncher.Windows;
 using System;
-using System.IO;
 using System.Runtime.CompilerServices;
 using Avalonia.Threading;
 

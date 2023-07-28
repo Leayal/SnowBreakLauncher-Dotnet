@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -49,7 +47,7 @@ public readonly struct GameClientManifestData : IDisposable
 
     private readonly string? GetString([CallerMemberName] string? name = null)
     {
-        if (this._doc.RootElement.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.String)
+        if (this._doc.RootElement.TryGetProperty(name ?? string.Empty, out var prop) && prop.ValueKind == JsonValueKind.String)
         {
             return prop.GetString();
         }

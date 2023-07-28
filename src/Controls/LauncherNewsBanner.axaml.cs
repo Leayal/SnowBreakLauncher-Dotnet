@@ -4,7 +4,6 @@ using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Leayal.SnowBreakLauncher.Classes;
 using System;
-using System.Threading.Tasks;
 
 namespace Leayal.SnowBreakLauncher.Controls;
 
