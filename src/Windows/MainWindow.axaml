@@ -28,11 +28,27 @@
 				<controls:LauncherNewsItemListView x:Name="LauncherNews_Notices" NewsItemPressed="NewsItem_PointerPressed" />
 			</TabItem>
 		</TabControl>
-		<Button Grid.Row="2" Margin="2" MinHeight="30" Padding="0" x:Name="Btn_StartGame" Click="Btn_StartGame_Click" HorizontalAlignment="Stretch" VerticalAlignment="Center" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-			<Grid Margin="0">
-				<ProgressBar Padding="0" Margin="0" x:Name="ProgressBar_Main" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
-				<TextBlock Padding="0" Margin="0" Name="BtnText_StartGame" Text="Loading launcher UI..." VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" />
+		<Carousel x:Name="BtnGameStart_Page" Grid.Row="2" Margin="2" MinHeight="50" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+			<!-- For main UI -->
+			<Button Margin="0" Padding="0" x:Name="Btn_StartGame" Click="Btn_StartGame_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+				<Grid Margin="0" IsHitTestVisible="False">
+					<ProgressBar Padding="0" Margin="0" x:Name="ProgressBar_Main" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+					<TextBlock Padding="0" Margin="0" Name="BtnText_StartGame" Text="Loading launcher UI..." VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" />
+				</Grid>
+			</Button>
+
+			<!-- For updating progress UI -->
+			<Grid Margin="0" ColumnDefinitions="*,*" RowDefinitions="*,*,Auto" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" >
+				<ProgressBar Grid.Row="0" Grid.ColumnSpan="2" Padding="0" Margin="0" Maximum="100" ShowProgressText="True" ProgressTextFormat="Downloading manifest from remote host" Minimum="0" Value="0" x:Name="ProgressBar_Total" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+
+				<ProgressBar Grid.Row="1" Grid.Column="0" Padding="0" Margin="0" Maximum="100" Minimum="0" Value="0" ShowProgressText="False" x:Name="ProgressBar_Download1" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+				<ProgressBar Grid.Row="1" Grid.Column="1" Padding="0" Margin="0" Maximum="100" Minimum="0" Value="0" ShowProgressText="False" x:Name="ProgressBar_Download2" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" />
+
+				<Button Grid.ColumnSpan="2" Grid.Row="2" Padding="0" Margin="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"
+						Click="Btn_UpdateCancel_Click">
+					<TextBlock Text="Cancel" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" IsHitTestVisible="False" />
+				</Button>
 			</Grid>
-		</Button>
+		</Carousel>
 	</Grid>
 </Window>

@@ -16,12 +16,21 @@ public readonly struct PakEntry
         this.element = element;
     }
 
-    public readonly long sizeInBytes => this.GetNumber();
-    public readonly long cRC => this.GetNumber();
+    public readonly long sizeInBytes => this.GetLongNumber();
+    public readonly uint cRC => this.GetUIntNumber();
     public readonly long? fastVerify => this.GetNullableNumber();
     public readonly string name => this.GetString();
 
-    private readonly long GetNumber([CallerMemberName] string? name = null)
+    private readonly uint GetUIntNumber([CallerMemberName] string? name = null)
+    {
+        if (this.element.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number)
+        {
+            return prop.GetUInt32();
+        }
+        return 0;
+    }
+
+    private readonly long GetLongNumber([CallerMemberName] string? name = null)
     {
         if (this.element.TryGetProperty(name, out var prop) && prop.ValueKind == JsonValueKind.Number)
         {

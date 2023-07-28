@@ -62,7 +62,7 @@ sealed class GameProcessManager : IDisposable
 #else
         this._processId = this.FindProcessIdFromExistingProcesses();
         var spanOfProcessName = Path.GetFileName(manager.GameExecutablePath.AsSpan());
-        ReadOnlySpan<char> WMI_STR_QueryProcessOps = "SELECT TargetInstance FROM __InstanceOperationEvent WITHIN 0.3 WHERE TargetInstance ISA 'Win32_Process' AND TargetInstance.Name = '";
+        ReadOnlySpan<char> WMI_STR_QueryProcessOps = "SELECT TargetInstance FROM __InstanceOperationEvent WITHIN 0.5 WHERE TargetInstance ISA 'Win32_Process' AND TargetInstance.Name = '";
         // Create a watcher and listen for events
         this.processWatcher = new ManagementEventWatcher(
             cachedWMI_Scope,
@@ -131,7 +131,7 @@ sealed class GameProcessManager : IDisposable
         {
             ArgumentNullException.ThrowIfNull(tickingCallback);
             this.callback = tickingCallback;
-            this.timer = new PeriodicTimer(TimeSpan.FromMilliseconds(300));
+            this.timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
         }
 
         public void Start()
@@ -328,11 +328,50 @@ sealed class GameProcessManager : IDisposable
             argList.Add("-ChannelID=seasun");
 
             ReadOnlySpan<char> buffer = "-userdir=\"";
-            argList.Add(string.Concat(buffer, mgr.FullPathOfGameDirectory, buffer.Slice(buffer.Length - 1, 1)));
+            argList.Add(string.Concat(buffer, mgr.FullPathOfGameDirectory, buffer.Slice(buffer.Length - 1)));
 
-            // This seems to be optional
-            argList.Add("-gclid=SnowBreak_Setup");
+            // Argument "-gclid" is optional, it seems.
+            bool alreadyHasGclid = false;
+            var supposedPath_gclidFile = Path.Join(mgr.FullPathOfOfficialLauncherDirectory, "gclid");
+            if (!File.Exists(supposedPath_gclidFile))
+            {
+                // If the file doesn't exist in the "supposed launcher folder".
+                // Probe for the gclid file in the same folder of this launcher.
+                supposedPath_gclidFile = Path.GetFullPath("gclid", AppContext.BaseDirectory);
+            }
+            if (File.Exists(supposedPath_gclidFile))
+            {
+                try
+                {
+                    using (var sr = File.OpenText(supposedPath_gclidFile))
+                    {
+                        var firstLine = sr.ReadLine();
+                        if (!string.IsNullOrWhiteSpace(firstLine))
+                        {
+                            var pairValue = Path.GetFileNameWithoutExtension(firstLine.AsSpan().TrimEnd());
+                            if (!pairValue.IsEmpty && !pairValue.IsWhiteSpace())
+                            {
+                                alreadyHasGclid = true;
+                                if (pairValue.Contains(' '))
+                                {
+                                    ReadOnlySpan<char> buffer_gclid = "-gclid=\"";
+                                    argList.Add(string.Concat(buffer_gclid, Path.GetFileNameWithoutExtension(firstLine.AsSpan()), buffer_gclid.Slice(buffer_gclid.Length - 1)));
+                                }
+                                else
+                                {
+                                    argList.Add(string.Concat("-gclid=", pairValue));
+                                }
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
 
+            // We will simply using assumed gclid value.
+            // The official launcher's behavior is that if the "gclid" file doesn't exist, it will not populate this parameter at all.
+            if (!alreadyHasGclid) argList.Add("-gclid=Snow_Setup");
+            
             proc.Start();
         }
         catch

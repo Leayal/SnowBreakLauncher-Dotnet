@@ -1,4 +1,6 @@
-﻿using Avalonia.Media.Imaging;
+﻿using Avalonia.Input;
+using Avalonia.Media.Imaging;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using System;
 using System.Collections.Generic;
 using System.Reflection;
@@ -9,17 +11,39 @@ namespace Leayal.SnowBreakLauncher.Classes
 {
     static class EmbedResources
     {
-        public static readonly Lazy<Bitmap?> WindowIcon = new Lazy<Bitmap?>(() =>
+        public static readonly Lazy<Bitmap?> WindowIcon;
+        public static readonly Lazy<Cursor> Cursor_Hand;
+
+        static EmbedResources()
         {
-            var currentAsm = Assembly.GetExecutingAssembly();
-            using (var resStream = currentAsm.GetManifestResourceStream("Leayal.SnowBreakLauncher.snowbreak.ico"))
+            WindowIcon = new Lazy<Bitmap?>(() =>
             {
-                if (resStream != null)
+                var currentAsm = Assembly.GetExecutingAssembly();
+                using (var resStream = currentAsm.GetManifestResourceStream("Leayal.SnowBreakLauncher.snowbreak.ico"))
                 {
-                    return Bitmap.DecodeToHeight(resStream, 32, BitmapInterpolationMode.HighQuality);
+                    if (resStream != null)
+                    {
+                        return Bitmap.DecodeToHeight(resStream, 32, BitmapInterpolationMode.HighQuality);
+                    }
                 }
+                return null;
+            });
+            Cursor_Hand = new Lazy<Cursor>(() => Cursor.Parse("Hand"));
+
+            AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
+        }
+
+        private static void CurrentDomain_ProcessExit(object? sender, EventArgs e)
+        {
+            AppDomain.CurrentDomain.ProcessExit -= CurrentDomain_ProcessExit;
+            if (Cursor_Hand.IsValueCreated)
+            {
+                Cursor_Hand.Value.Dispose();
             }
-            return null;
-        });
+            if (WindowIcon.IsValueCreated)
+            {
+                WindowIcon.Value.Dispose();
+            }
+        }
     }
 }

@@ -50,40 +50,64 @@ public partial class MainWindow : Window
                         window.ProgressBar_Main.IsIndeterminate = true;
                         window.ProgressBar_Main.IsVisible = true;
                         window.BtnText_StartGame.Text = "Checking for game client updates";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
+                        break;
+                    case GameStartButtonState.RequiresUpdate:
+                        window.Btn_StartGame.IsEnabled = true;
+                        window.ProgressBar_Main.IsIndeterminate = false;
+                        window.ProgressBar_Main.IsVisible = false;
+                        window.BtnText_StartGame.Text = "Update game client";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
+                        break;
+                    case GameStartButtonState.UpdatingGameClient:
+                        window.Btn_StartGame.IsEnabled = false;
+                        window.ProgressBar_Main.IsIndeterminate = false;
+                        window.ProgressBar_Main.IsVisible = false;
+                        window.BtnText_StartGame.Text = "Updating game client";
+
+                        window.BtnGameStart_Page.SelectedIndex = 1;
                         break;
                     case GameStartButtonState.CanStartGame:
                         window.BtnText_StartGame.Text = "Start game";
                         window.ProgressBar_Main.IsIndeterminate = false;
                         window.ProgressBar_Main.IsVisible = false;
                         window.Btn_StartGame.IsEnabled = true;
-                        break;
-                    case GameStartButtonState.RequiresUpdate:
-                        window.Btn_StartGame.IsEnabled = true;
-                        window.BtnText_StartGame.Text = "Update game client";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
                     case GameStartButtonState.StartingGame:
                         window.Btn_StartGame.IsEnabled = false;
                         window.ProgressBar_Main.IsIndeterminate = true;
                         window.ProgressBar_Main.IsVisible = true;
                         window.BtnText_StartGame.Text = "Game is starting...";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
                     case GameStartButtonState.WaitingForGameExit:
                         window.Btn_StartGame.IsEnabled = false;
                         window.ProgressBar_Main.IsIndeterminate = false;
                         window.ProgressBar_Main.IsVisible = false;
                         window.BtnText_StartGame.Text = "Game is running...";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
                     case GameStartButtonState.NeedInstall:
                         window.Btn_StartGame.IsEnabled = true;
                         window.ProgressBar_Main.IsIndeterminate = false;
                         window.ProgressBar_Main.IsVisible = false;
                         window.BtnText_StartGame.Text = "Install or select existing data";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
                     default:
                         window.Btn_StartGame.IsEnabled = false;
                         window.ProgressBar_Main.IsIndeterminate = true;
                         window.ProgressBar_Main.IsVisible = true;
                         window.BtnText_StartGame.Text = "Loading launcher UI...";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
                 }
             }

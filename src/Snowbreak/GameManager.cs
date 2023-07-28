@@ -85,8 +85,19 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         }
 
         /// <summary>Usually this is the path to folder which contains the official game launcher.</summary>
+        /// <remarks>This is only an assumption path, it only returns a full path to the parent folder that containing the game client's folder. This path may not really be the official launcher's location.</remarks>
+        public ReadOnlySpan<char> FullPathOfOfficialLauncherDirectory => Path.GetDirectoryName(FullPathOfInstallationDirectory);
+        /// <summary>Usually this is the path to folder which contains the game client files.</summary>
+        /// <remarks>
+        /// <para>Different from <seealso cref="FullPathOfGameDirectory"/>, this returns the path to <u>the parent folder</u> of <seealso cref="FullPathOfGameDirectory"/>.</para>
+        /// <para>This folder is also what the official game launcher store local manifest files and stuffs to speed up the game client updating progress.</para>
+        /// </remarks>
         public ReadOnlySpan<char> FullPathOfInstallationDirectory => this.GameExecutablePath.AsSpan(0, this.GameExecutablePath.Length - RelativePathToExecutablePath.Length - 1);
-        /// <summary>Usually this is the path to folder which contains the UE game client.</summary>
+        /// <summary>Usually this is the path to folder which contains the game client.</summary>
+        /// <remarks>
+        /// <para>Different from <seealso cref="FullPathOfInstallationDirectory"/>, this returns the path to the actual folder of the Unreal Engine game client.</para>
+        /// <para>This folder is the UE distribution.</para>
+        /// </remarks>
         public ReadOnlySpan<char> FullPathOfGameDirectory => this.GameExecutablePath.AsSpan(0, this.GameExecutablePath.Length - RelativePathToExecutablePath.AsSpan(4).Length);
     }
 }

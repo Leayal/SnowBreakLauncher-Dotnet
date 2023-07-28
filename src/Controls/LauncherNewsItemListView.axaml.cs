@@ -36,7 +36,7 @@ public partial class LauncherNewsItemListView : UserControl
     {
         if (sender is TextBlock tb)
         {
-            tb.Tag = Clickable.On(tb, this.LauncherNewsItemListView_Click);
+            tb.Tag = tb.OnClick(this.LauncherNewsItemListView_Click);
         }
     }
 

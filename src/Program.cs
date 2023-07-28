@@ -41,12 +41,17 @@ class Program
 
     // Avalonia configuration, don't remove; also used by visual designer.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AppBuilder BuildAvaloniaApp(InstanceController processInstance)
+    public static AppBuilder? BuildAvaloniaApp(InstanceController processInstance)
     {
         var builder = AppBuilder.Configure<App>(() => new App(processInstance))
-            // .UseManagedSystemDialogs()
+            .With(new Win32PlatformOptions()
+            {
+                CompositionMode = new Win32CompositionMode[] { Win32CompositionMode.WinUIComposition /* (Win32CompositionMode)2 This is DirectComposition, a meaningless value, deprecated by WinUIComposition */, Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.RedirectionSurface },
+                RenderingMode = new Win32RenderingMode[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Wgl, Win32RenderingMode.Software },
+            })
             .UsePlatformDetect()
             .WithInterFont();
+
 #if DEBUG
         builder.LogToTrace();
 #endif
@@ -72,7 +77,9 @@ class Program
 
         protected override void OnStartupFirstInstance(string[] args)
         {
-            Environment.ExitCode = BuildAvaloniaApp(this).StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
+            var app = BuildAvaloniaApp(this);
+            if (app == null) return;
+            Environment.ExitCode = app.StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
         }
 
         private static void ShutdownProcess()

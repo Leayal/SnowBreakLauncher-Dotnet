@@ -4,7 +4,6 @@
 
 using Avalonia;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Leayal.SnowBreakLauncher.Snowbreak;
 using System.Collections.Generic;
 using System;
@@ -12,11 +11,15 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Leayal.SnowBreakLauncher.Controls;
+using Avalonia.Threading;
+using Avalonia.Controls;
+using System.Threading;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
     public partial class MainWindow
     {
+        private CancellationTokenSource? cancelSrc_UpdateGameClient;
         protected override async void OnLoaded(RoutedEventArgs e)
         {
             base.OnLoaded(e);
@@ -123,7 +126,15 @@ namespace Leayal.SnowBreakLauncher.Windows
                 instance.Process.ProcessExited -= this.GameManager_Process_Exited;
             }
             this._launcherConfig.Dispose();
+            this.carouselAutoplay.Dispose();
             base.OnClosed(e);
+        }
+
+        public void Btn_UpdateCancel_Click(object source, RoutedEventArgs args)
+        {
+            // Steal it so that in case the button is clicked multiple times "at once", only the first click will do cancellation.
+            var stolenCancelSrc = Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, null);
+            stolenCancelSrc?.Cancel();
         }
 
         public async void Btn_StartGame_Click(object source, RoutedEventArgs args)
@@ -134,29 +145,167 @@ namespace Leayal.SnowBreakLauncher.Windows
                 case GameStartButtonState.NeedInstall:
                     break;
                 case GameStartButtonState.CanStartGame:
-                    if (GameManager.Instance is GameManager gameMgr)
                     {
-                        var processMgr = gameMgr.Process;
-                        if (processMgr.IsGameRunning)
+                        if (GameManager.Instance is GameManager gameMgr)
                         {
-                            this.GameStartButtonState = GameStartButtonState.WaitingForGameExit;
+                            var processMgr = gameMgr.Process;
+                            if (processMgr.IsGameRunning)
+                            {
+                                this.GameStartButtonState = GameStartButtonState.WaitingForGameExit;
+                            }
+                            else if (await gameMgr.Updater.CheckForUpdatesAsync())
+                            {
+                                if ((await ShowYesNoMsgBox("Your game client seems to be out-dated. Do you want to update it now?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                                {
+                                    this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                    this.Btn_StartGame_Click(source, args);
+                                }
+                                else
+                                {
+                                    this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                }
+                            }
+                            else
+                            {
+                                this.GameStartButtonState = GameStartButtonState.StartingGame;
+                                try
+                                {
+                                    await processMgr.StartGame();
+                                }
+                                catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                                {
+                                    this.GameStartButtonState = GameStartButtonState.CanStartGame;
+                                }
+                                catch (Exception ex)
+                                {
+                                    this.GameStartButtonState = GameStartButtonState.CanStartGame;
+                                    this.ShowErrorMsgBox(ex);
+                                    // MessageBox.Avalonia.MessageBoxManager
+                                }
+                            }
                         }
-                        else
+                    }
+                    break;
+                case GameStartButtonState.RequiresUpdate:
+                    {
+                        if (GameManager.Instance is GameManager gameMgr)
                         {
-                            this.GameStartButtonState = GameStartButtonState.StartingGame;
-                            try
+                            var processMgr = gameMgr.Process;
+                            if (processMgr.IsGameRunning)
                             {
-                                await processMgr.StartGame();
+                                this.GameStartButtonState = GameStartButtonState.WaitingForGameExit;
                             }
-                            catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                            else
                             {
-                                this.GameStartButtonState = GameStartButtonState.CanStartGame;
-                            }
-                            catch (Exception ex)
-                            {
-                                this.GameStartButtonState = GameStartButtonState.CanStartGame;
-                                this.ShowErrorMsgBox(ex);
-                                // MessageBox.Avalonia.MessageBoxManager
+                                var updater = gameMgr.Updater;
+                                this.GameStartButtonState = GameStartButtonState.UpdatingGameClient;
+                                var newCancellation = new CancellationTokenSource();
+                                var oldCancellation = Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, newCancellation);
+                                try
+                                {
+                                    if (oldCancellation != null)
+                                    {
+                                        oldCancellation.Cancel();
+                                        oldCancellation.Dispose();
+                                    }
+                                }
+                                catch { }
+                                Action StopIndetermined = () =>
+                                {
+                                    this.ProgressBar_Total.ProgressTextFormat = "File check and downloading ({1}%)";
+                                    this.ProgressBar_Total.IsIndeterminate = false;
+                                    this.ProgressBar_Download1.IsIndeterminate = false;
+                                    this.ProgressBar_Download2.IsIndeterminate = false;
+                                    this.ProgressBar_Download1.ShowProgressText = true;
+                                    this.ProgressBar_Download2.ShowProgressText = true;
+                                };
+                                var progressCallback = new GameUpdaterProgressCallback(() =>
+                                {
+                                    if (this.ProgressBar_Total.CheckAccess())
+                                    {
+                                        StopIndetermined.Invoke();
+                                    }
+                                    else
+                                    {
+                                        // Should be here, since we're under different thread that invoked this callback.
+                                        Dispatcher.UIThread.InvokeAsync(StopIndetermined);
+                                    }
+                                });
+                                this.ProgressBar_Total.IsIndeterminate = true;
+                                this.ProgressBar_Download1.IsIndeterminate = true;
+                                this.ProgressBar_Download2.IsIndeterminate = true;
+                                this.ProgressBar_Total.ProgressTextFormat = "Downloading manifest from remote host";
+                                this.ProgressBar_Download1.ShowProgressText = false;
+                                this.ProgressBar_Download2.ShowProgressText = false;
+                                var uiUpdaterCancellation = DispatcherTimer.Run(() =>
+                                {
+                                    if (!this.ProgressBar_Total.IsIndeterminate)
+                                    {
+                                        // Yes, max is 50%, we split the "Total Progress" bar into 2, half for file checking, the other half for file downloading.
+                                        int progressPercentile_FileCheck = progressCallback.FileCheckProgress.TotalProgress == 0 ? 0 : (progressCallback.FileCheckProgress.IsDone ? 50 : progressCallback.FileCheckProgress.GetPercentile(50)),
+                                        progressPercentile_FileDownload = progressCallback.TotalDownloadProgress.TotalProgress == 0 ? 0 : (progressCallback.TotalDownloadProgress.IsDone ? 50 : progressCallback.TotalDownloadProgress.GetPercentile(50));
+
+                                        this.ProgressBar_Total.Value = progressPercentile_FileCheck + progressPercentile_FileDownload;
+                                    }
+                                    static void UpdateProgressBar(GameUpdaterDownloadProgressValue progress, ProgressBar attachedprogressbar)
+                                    {
+                                        /* String.Format of the Avalonia ProgressBarText
+                                        0 = Value
+                                        1 = Value as a Percentage from 0 to 100 (e.g. Minimum = 0, Maximum = 50, Value = 25, then Percentage = 50)
+                                        2 = Minimum
+                                        3 = Maximum
+                                        */
+                                        var oldFilename = attachedprogressbar.Tag as string;
+                                        if (!string.Equals(oldFilename, progress.Filename, StringComparison.Ordinal))
+                                        {
+                                            attachedprogressbar.Tag = progress.Filename;
+                                            attachedprogressbar.ProgressTextFormat = string.Concat(System.IO.Path.GetFileName(progress.Filename.AsSpan()), " ({1}%)");
+                                        }
+                                        if (progress.IsDone)
+                                        {
+                                            attachedprogressbar.Value = 100;
+                                        }
+                                        else if (progress.TotalProgress == 0 || attachedprogressbar.IsIndeterminate)
+                                        {
+                                            attachedprogressbar.Value = 0;
+                                        }
+                                        else
+                                        {
+                                            attachedprogressbar.Value = progress.GetPercentile();
+                                        }
+                                    }
+
+                                    UpdateProgressBar(progressCallback.Download1Progress, this.ProgressBar_Download1);
+                                    UpdateProgressBar(progressCallback.Download2Progress, this.ProgressBar_Download2);
+
+                                    return true;
+                                }, TimeSpan.FromMilliseconds(50), DispatcherPriority.Render);
+                                try
+                                {
+                                    var cancelToken = newCancellation.Token;
+                                    await updater.UpdateGameClientAsync(progressCallback: progressCallback, cancellationToken: cancelToken);
+
+                                    if (await updater.CheckForUpdatesAsync(cancelToken))
+                                    {
+                                        this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                    }
+                                    else
+                                    {
+                                        this.GameStartButtonState = GameStartButtonState.CanStartGame;
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                    if (ex is not OperationCanceledException)
+                                        this.ShowErrorMsgBox(ex);
+                                }
+                                finally
+                                {
+                                    uiUpdaterCancellation.Dispose();
+                                    Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, null); // Set it back to null
+                                    newCancellation.Dispose();
+                                }
                             }
                         }
                     }

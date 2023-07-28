@@ -5,9 +5,9 @@ namespace Leayal.SnowBreakLauncher.Controls
 {
     public static class Clickable
     {
-        public static Clickable<T> On<T>(this T control) where T : Control => new Clickable<T>(control);
+        public static Clickable<T> On<T>(T control) where T : Control => new Clickable<T>(control);
 
-        public static Clickable<T> On<T>(T control, Action<T, Avalonia.Interactivity.RoutedEventArgs> handler) where T : Control
+        public static Clickable<T> OnClick<T>(this T control, Action<T, Avalonia.Interactivity.RoutedEventArgs> handler) where T : Control
         {
             var clickable = On(control);
             clickable.Click += handler;
