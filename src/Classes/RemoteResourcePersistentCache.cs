@@ -71,7 +71,6 @@ namespace Leayal.SnowBreakLauncher.Classes
                         var httpClient = Snowbreak.SnowBreakHttpClient.Instance;
                         using (var request = new HttpRequestMessage(HttpMethod.Get, this.url))
                         {
-                            Snowbreak.SnowBreakHttpClient.SetUserAgent(request);
                             request.Headers.Host = this.url.Host;
                             using (var response = await httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead))
                             {

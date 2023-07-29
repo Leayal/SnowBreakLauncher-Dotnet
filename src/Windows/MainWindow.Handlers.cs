@@ -152,34 +152,47 @@ namespace Leayal.SnowBreakLauncher.Windows
                             {
                                 this.GameStartButtonState = GameStartButtonState.WaitingForGameExit;
                             }
-                            else if (await gameMgr.Updater.CheckForUpdatesAsync())
-                            {
-                                if ((await ShowYesNoMsgBox("Your game client seems to be out-dated. Do you want to update it now?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
-                                {
-                                    this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
-                                    this.Btn_StartGame_Click(source, args);
-                                }
-                                else
-                                {
-                                    this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
-                                }
-                            }
                             else
                             {
-                                this.GameStartButtonState = GameStartButtonState.StartingGame;
+                                var prevState = this.GameStartButtonState;
                                 try
                                 {
-                                    await processMgr.StartGame();
+                                    this.GameStartButtonState = GameStartButtonState.CheckingForUpdates;
+                                    if (await gameMgr.Updater.CheckForUpdatesAsync())
+                                    {
+                                        if ((await ShowYesNoMsgBox("Your game client seems to be out-dated. Do you want to update it now?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                                        {
+                                            this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                            this.Btn_StartGame_Click(source, args);
+                                        }
+                                        else
+                                        {
+                                            this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        this.GameStartButtonState = GameStartButtonState.StartingGame;
+                                        try
+                                        {
+                                            await processMgr.StartGame();
+                                        }
+                                        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                                        {
+                                            this.GameStartButtonState = GameStartButtonState.CanStartGame;
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            this.GameStartButtonState = GameStartButtonState.CanStartGame;
+                                            this.ShowErrorMsgBox(ex);
+                                            // MessageBox.Avalonia.MessageBoxManager
+                                        }
+                                    }
                                 }
-                                catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                                catch
                                 {
-                                    this.GameStartButtonState = GameStartButtonState.CanStartGame;
-                                }
-                                catch (Exception ex)
-                                {
-                                    this.GameStartButtonState = GameStartButtonState.CanStartGame;
-                                    this.ShowErrorMsgBox(ex);
-                                    // MessageBox.Avalonia.MessageBoxManager
+                                    this.GameStartButtonState = prevState;
+                                    throw;
                                 }
                             }
                         }
