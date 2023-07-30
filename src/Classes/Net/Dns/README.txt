@@ -1,3 +1,4 @@
 Original: https://github.com/Rushyo/DoHoN
-What changed: Commit log for it.
-When changed: Commit log for it.
+When changed: See this file last updated time.
+What changed:
+- Switch to use built-in System.Text.Json classes, instead of using Newtonsoft.Json.

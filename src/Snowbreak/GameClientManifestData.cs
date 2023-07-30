@@ -32,6 +32,18 @@ public readonly struct GameClientManifestData : IDisposable
         }
     }
 
+    internal readonly JsonElement.ObjectEnumerator GetRawProperies()
+    {
+        var jsonElement = this._doc.RootElement;
+        if (jsonElement.ValueKind == JsonValueKind.Object)
+        {
+            return jsonElement.EnumerateObject();
+        }
+
+        // Can't be here anyway unless the manifest file is a troll one.
+        return default;
+    }
+
     public readonly int PakCount
     {
         get

@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
@@ -14,6 +15,8 @@ public readonly struct PakEntry
 
     public readonly long sizeInBytes => this.GetLongNumber();
     public readonly uint cRC => this.GetUIntNumber();
+    /// <summary>Unix time of file's modified date (expressed in seconds)</summary>
+    /// <remarks>Use <seealso cref="DateTimeOffset.FromUnixTimeSeconds"/> to parse this number.</remarks>
     public readonly long? fastVerify => this.GetNullableNumber();
     public readonly string name => this.GetString();
 

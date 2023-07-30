@@ -54,14 +54,23 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
         // ReSharper disable once ParameterTypeCanBeEnumerable.Global
         public void SetEndpoints(string[] serverList)
         {
-            if (serverList.Any(s => !s.StartsWith("https://")))
-                throw new ArgumentException("Server URI not https", nameof(serverList));
-            _endpointList = serverList.ToArray();
+            foreach (var s in serverList)
+            {
+                if (!s.StartsWith("https://"))
+                    throw new ArgumentException("Server URI not https", nameof(serverList));
+            }
+            _endpointList = serverList;
         }
 
         public DoHClient()
         {
-            _client = new HttpClient();
+            // We use a separate HTTP Client and Socket Pool for it.
+            // Using same HTTP Client in SnowBreakHttpClient.Instance will leads to endless loop.
+            _client = new HttpClient(new SocketsHttpHandler()
+            {
+                UseProxy = false,
+                AutomaticDecompression = System.Net.DecompressionMethods.All
+            }, true);
         }
 
         public void ClearCache()

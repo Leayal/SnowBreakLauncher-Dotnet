@@ -3,6 +3,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
+	<ImplicitUsings>disable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
@@ -10,11 +11,13 @@
     <ApplicationIcon>snowbreak.ico</ApplicationIcon>
 	<Authors>Dramiel Leayal</Authors>
 	<Company>Dramiel Leayal</Company>
+	<DefineTrace>false</DefineTrace>
 	<DefineConstants>$(DefineConstants);NO_WMI;NO_IPV6</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishAot>true</PublishAot>
+    <DefineTrace>false</DefineTrace>
   </PropertyGroup>
 
   <ItemGroup>

@@ -23,7 +23,7 @@ public sealed class Crc32 : HashAlgorithm
     public const UInt32 DefaultPolynomial = 0xedb88320u;
     public const UInt32 DefaultSeed = 0xffffffffu;
 
-    static readonly UInt32[] defaultTable = InitializeTable(DefaultPolynomial);
+    static readonly UInt32[] defaultTable = InitializeNewTable(DefaultPolynomial);
 
     readonly UInt32 seed;
     readonly UInt32[] table;
@@ -111,6 +111,11 @@ public sealed class Crc32 : HashAlgorithm
         if (polynomial == DefaultPolynomial)
             return defaultTable;
 
+        return InitializeNewTable(polynomial);
+    }
+
+    private static UInt32[] InitializeNewTable(UInt32 polynomial)
+    {
         var createTable = new UInt32[256];
         for (var i = 0; i < 256; i++)
         {
@@ -140,6 +145,15 @@ public sealed class Crc32 : HashAlgorithm
         var size = buffer.Length;
         for (var i = 0; i < size; i++)
             hash = (hash >> 8) ^ table[buffer[i] ^ hash & 0xff];
+        return hash;
+    }
+
+    internal static UInt32 CalculateHash(UInt32 seed, ReadOnlySpan<byte> buffer)
+    {
+        var hash = seed;
+        var size = buffer.Length;
+        for (var i = 0; i < size; i++)
+            hash = (hash >> 8) ^ defaultTable[buffer[i] ^ hash & 0xff];
         return hash;
     }
 

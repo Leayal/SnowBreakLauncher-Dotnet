@@ -254,10 +254,29 @@ namespace Leayal.SnowBreakLauncher.Windows
                                     if (!this.ProgressBar_Total.IsIndeterminate)
                                     {
                                         // Yes, max is 50%, we split the "Total Progress" bar into 2, half for file checking, the other half for file downloading.
-                                        int progressPercentile_FileCheck = progressCallback.FileCheckProgress.TotalProgress == 0 ? 0 : (progressCallback.FileCheckProgress.IsDone ? 50 : progressCallback.FileCheckProgress.GetPercentile(50)),
-                                        progressPercentile_FileDownload = progressCallback.TotalDownloadProgress.TotalProgress == 0 ? 0 : (progressCallback.TotalDownloadProgress.IsDone ? 50 : progressCallback.TotalDownloadProgress.GetPercentile(50));
+                                        if (progressCallback.FileCheckProgress.IsDone && progressCallback.TotalDownloadProgress.IsDone)
+                                        {
+                                            this.ProgressBar_Total.Value = 100;
+                                        }
+                                        else
+                                        {
+                                            if (progressCallback.FileCheckProgress.IsDone)
+                                            {
+                                                this.ProgressBar_Total.Value = progressCallback.TotalDownloadProgress.GetPercentile();
+                                            }
+                                            else if (progressCallback.TotalDownloadProgress.IsDone)
+                                            {
+                                                this.ProgressBar_Total.Value = progressCallback.FileCheckProgress.GetPercentile();
+                                            }
+                                            else
+                                            {
+                                                long sumCurrent = progressCallback.TotalDownloadProgress.CurrentProgress + progressCallback.FileCheckProgress.CurrentProgress,
+                                                    sumTotal = progressCallback.TotalDownloadProgress.TotalProgress + progressCallback.FileCheckProgress.TotalProgress;
 
-                                        this.ProgressBar_Total.Value = progressPercentile_FileCheck + progressPercentile_FileDownload;
+                                                var tmp = (sumCurrent * 100d) / sumTotal;
+                                                this.ProgressBar_Total.Value = tmp;
+                                            }
+                                        }
                                     }
                                     static void UpdateProgressBar(GameUpdaterDownloadProgressValue progress, ProgressBar attachedprogressbar)
                                     {

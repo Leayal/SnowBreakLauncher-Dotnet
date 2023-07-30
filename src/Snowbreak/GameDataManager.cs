@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Buffers;
 using System.IO;
-using System.Threading.Tasks;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -46,10 +45,14 @@ class GameDataManager
 
     public string PathToManifestJson => Path.Join(this.manager.FullPathOfInstallationDirectory, "manifest.json");
 
-    public GameClientManifestData GetLocalManifest()
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <returns><see langword="null"/> if the local manifest file doesn't exist. Or a <seealso cref="GameClientManifestData"/> contains the data of the local manifest file.</returns>
+    public GameClientManifestData? TryGetLocalManifest()
     {
         var localManifestPath = this.PathToManifestJson;
-        if (!File.Exists(localManifestPath)) throw new FileNotFoundException(null, localManifestPath);
+        if (!File.Exists(localManifestPath)) return null;
         return GameClientManifestData.CreateFromLocalFile(localManifestPath);
     }
 
