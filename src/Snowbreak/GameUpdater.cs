@@ -190,7 +190,7 @@ sealed class GameUpdater
             var crcHasher = new IncrementalCrc32Hash();
             try
             {
-                while (!needUpdatedOnes.IsCompleted)
+                while (!needUpdatedOnes.IsCompleted && !cancellationToken.IsCancellationRequested)
                 {
                     if (needUpdatedOnes.TryTake(out var pak))
                     {
@@ -238,7 +238,7 @@ sealed class GameUpdater
 
                                             crcHasher.Reset();
                                             int read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
-                                            while (read > 0)
+                                            while (read > 0 && !cancellationToken.IsCancellationRequested)
                                             {
                                                 fs.Write(borrowedBuffer, 0, read);
                                                 crcHasher.Append(borrowedBuffer.AsSpan(0, read));
@@ -247,14 +247,17 @@ sealed class GameUpdater
                                             }
 
                                             fs.Flush();
-                                            if (crcHasher.HashRaw == pak.cRC)
+                                            if (!cancellationToken.IsCancellationRequested)
                                             {
-                                                isOkay = true;
-                                                // Fix the length if necessary
-                                                var currentLen = fs.Position;
-                                                if (currentLen != fs.Length)
+                                                if (crcHasher.HashRaw == pak.cRC)
                                                 {
-                                                    fs.SetLength(currentLen);
+                                                    isOkay = true;
+                                                    // Fix the length if necessary
+                                                    var currentLen = fs.Position;
+                                                    if (currentLen != fs.Length)
+                                                    {
+                                                        fs.SetLength(currentLen);
+                                                    }
                                                 }
                                             }
                                         }

@@ -5,11 +5,13 @@
 using Avalonia.Threading;
 using Leayal.SnowBreakLauncher.Classes;
 using Leayal.SnowBreakLauncher.Snowbreak;
+using System.Threading;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
     public partial class MainWindow
     {
+        private readonly CancellationTokenSource cancelSrc_Root;
         private readonly OfficialJsonConfiguration _launcherConfig;
 
         private void OnGameManagerChanged(GameManager? oldOne, GameManager newOne)
@@ -22,8 +24,6 @@ namespace Leayal.SnowBreakLauncher.Windows
             newOne.Process.ProcessStarted += GameManager_Process_Started;
             newOne.Process.ProcessExited += GameManager_Process_Exited;
         }
-
-     
 
         private void GameManager_Process_Started(in uint processId)
         {

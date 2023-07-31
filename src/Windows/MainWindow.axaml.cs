@@ -8,6 +8,7 @@ using Avalonia.Media.Imaging;
 using Leayal.SnowBreakLauncher.Snowbreak;
 using Leayal.SnowBreakLauncher.Classes;
 using Leayal.SnowBreakLauncher.Controls;
+using System;
 
 namespace Leayal.SnowBreakLauncher.Windows;
 
@@ -18,6 +19,7 @@ public partial class MainWindow : Window
     public MainWindow(OfficialJsonConfiguration launcherConfig)
     {
         this._launcherConfig = launcherConfig;
+        this.cancelSrc_Root = new System.Threading.CancellationTokenSource();
         GameManager.GameLocationChanged += this.OnGameManagerChanged;
         InitializeComponent();
         if (EmbedResources.WindowIcon.Value is Bitmap bm)
@@ -26,7 +28,29 @@ public partial class MainWindow : Window
         }
         this.GameStartButtonState = GameStartButtonState.LoadingUI;
         this.carouselAutoplay = new CarouselAutoplay(this.LauncherNews_Banners);
+        this.LauncherNews_Banners.GetObservable(Carousel.SelectedIndexProperty).Subscribe(this.OnLauncherNews_Banners_IndexChanged, this.cancelSrc_Root.Token);
+        this.LauncherNews_Banners.GetObservable(Carousel.ItemCountProperty).Subscribe(this.OnLauncherNews_Banners_ItemCountChanged, this.cancelSrc_Root.Token);
     }
+
+    #region "| LauncherNews_Banners Paging |"
+    private void OnLauncherNews_Banners_IndexChanged(int value)
+    {
+        this.TB_LauncherNews_Banners_PagingCurrent.Text = (value + 1).ToString();
+    }
+
+    private void OnLauncherNews_Banners_ItemCountChanged(int value)
+    {
+        if (value == 0)
+        {
+            this.TB_LauncherNews_Banners_Paging.IsVisible = false;
+        }
+        else
+        {
+            this.TB_LauncherNews_Banners_Paging.IsVisible = true;
+            this.TB_LauncherNews_Banners_PagingCount.Text = value.ToString();
+        }
+    }
+    #endregion
 
     #region "| GameStartButtonState |"
     private GameStartButtonState _gameStartButtonState;
@@ -92,7 +116,7 @@ public partial class MainWindow : Window
                         window.Btn_StartGame.IsEnabled = true;
                         window.ProgressBar_Main.IsIndeterminate = false;
                         window.ProgressBar_Main.IsVisible = false;
-                        window.BtnText_StartGame.Text = "Install or select existing data";
+                        window.BtnText_StartGame.Text = "Install or select existing game files";
 
                         window.BtnGameStart_Page.SelectedIndex = 0;
                         break;

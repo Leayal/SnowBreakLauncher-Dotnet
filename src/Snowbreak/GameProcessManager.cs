@@ -308,6 +308,9 @@ sealed class GameProcessManager : IDisposable
 
         if (!File.Exists(executablePath)) throw new FileNotFoundException(null, executablePath);
 
+#if NO_WMI
+        this.pollingProcessWatcher.Stop();
+#endif
         Process? proc = null;
         try
         {
@@ -378,9 +381,12 @@ sealed class GameProcessManager : IDisposable
         finally
         {
 #if NO_WMI
-            if (proc != null)
+            if (proc == null)
             {
-                this.pollingProcessWatcher.Stop();
+                this.pollingProcessWatcher.Start();
+            }
+            else
+            {
                 this.OnGameProcessStart(proc);
             }
 #else

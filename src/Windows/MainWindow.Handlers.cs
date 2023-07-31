@@ -13,6 +13,9 @@ using Leayal.SnowBreakLauncher.Controls;
 using Avalonia.Threading;
 using Avalonia.Controls;
 using System.Threading;
+using Avalonia.Platform.Storage;
+using System.IO;
+using Avalonia;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
@@ -22,7 +25,7 @@ namespace Leayal.SnowBreakLauncher.Windows
         protected override async void OnLoaded(RoutedEventArgs e)
         {
             base.OnLoaded(e);
-
+            
             await Task.WhenAll(this.AfterLoaded_Btn_GameStart(), this.AfterLoaded_LauncherNews());
         }
 
@@ -90,8 +93,8 @@ namespace Leayal.SnowBreakLauncher.Windows
 
         private async Task AfterLoaded_Btn_GameStart()
         {
-            string installedDirectory = this._launcherConfig.GameClientInstallationPath;
-            if (!IsGameExisted(installedDirectory))
+            var installedDirectory = this._launcherConfig.GameClientInstallationPath;
+            if (string.IsNullOrEmpty(installedDirectory) || !IsGameExisted(System.IO.Path.GetFullPath(installedDirectory)))
             {
                 // Game isn't installed or not detected
                 this.GameStartButtonState = GameStartButtonState.NeedInstall;
@@ -116,6 +119,46 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
         }
 
+        protected override async void OnClosing(WindowClosingEventArgs e)
+        {
+            if (e.IsProgrammatic)
+            {
+                base.OnClosing(e);
+            }
+            else
+            {
+                base.OnClosing(e);
+                if (!e.Cancel)
+                {
+                    if (this.GameStartButtonState == GameStartButtonState.UpdatingGameClient)
+                    {
+                        // Always stop closing down the window as long as we're still in the state above.
+                        e.Cancel = true;
+                        if (this.cancelSrc_Root.IsCancellationRequested)
+                        {
+                            // We're already issued exit signal.
+                            // When updating is completely cancelled and finalized, it will call Window.Close(), which leads to "IsProgrammatic" above and close the window gracefully.
+                            return;
+                        }
+                        else
+                        {
+                            if (e.CloseReason == WindowCloseReason.OSShutdown)
+                            {
+                                // Because the OS is shutting down, there should be no interaction/user input to prevent OS from being stuck at shutting down screen.
+                                // We send signal without user confirmation.
+                                this.cancelSrc_Root.Cancel();
+                            }
+                            else if ((await this.ShowYesNoMsgBox("Game client is being updated. Are you sure you want to cancel updating and close the launcher?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                            {
+                                // Send signal that the launcher should exit after complete the updating game client task.
+                                this.cancelSrc_Root.Cancel();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         protected override void OnClosed(EventArgs e)
         {
             GameManager.GameLocationChanged -= this.OnGameManagerChanged;
@@ -129,11 +172,18 @@ namespace Leayal.SnowBreakLauncher.Windows
             base.OnClosed(e);
         }
 
-        public void Btn_UpdateCancel_Click(object source, RoutedEventArgs args)
+        public async void Btn_UpdateCancel_Click(object source, RoutedEventArgs args)
         {
-            // Steal it so that in case the button is clicked multiple times "at once", only the first click will do cancellation.
-            var stolenCancelSrc = Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, null);
-            stolenCancelSrc?.Cancel();
+            // Don't need Interlocked, unneccessary to be strict here. It's just to avoid re-show the prompt below.
+            // But it's still okay to re-show, too.
+            if (this.cancelSrc_UpdateGameClient == null) return;
+
+            if ((await this.ShowYesNoMsgBox("Game client is being updated. Are you sure you want to cancel updating?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+            {
+                // Steal it so that in case the button is clicked multiple times "at once", only the first click will do cancellation.
+                var stolenCancelSrc = Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, null);
+                stolenCancelSrc?.Cancel();
+            }
         }
 
         public async void Btn_StartGame_Click(object source, RoutedEventArgs args)
@@ -142,6 +192,141 @@ namespace Leayal.SnowBreakLauncher.Windows
             switch (localvar_btnGameStartState)
             {
                 case GameStartButtonState.NeedInstall:
+                    // GameManager.Instance should be null here.
+                    {
+                        var installedDirectory = this._launcherConfig.GameClientInstallationPath;
+                        if (!string.IsNullOrEmpty(installedDirectory))
+                        {
+                            installedDirectory = System.IO.Path.GetFullPath(installedDirectory);
+                            if (IsGameExisted(installedDirectory))
+                            {
+                                if ((await ShowYesNoMsgBox("It seems like the configuration has changed." + Environment.NewLine
+                                    + "Do you want to use the path from the configuration file (see below)?" + Environment.NewLine + Environment.NewLine
+                                    + installedDirectory, "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                                {
+                                    await this.AfterLoaded_Btn_GameStart();
+                                    return;
+                                }
+                            }
+                        }
+
+                        var selection = await ShowYesNoCancelMsgBox("The launcher cannot find your game client. Please choose these options:" + Environment.NewLine + Environment.NewLine
+                                   + "- Yes: Select a folder to install the game to." + Environment.NewLine
+                                   + "- No: Browse for your existing game client." + Environment.NewLine
+                                   + "- Cancel: Abort and go back.", "Prompt");
+                        
+                        if (selection == MsBox.Avalonia.Enums.ButtonResult.Yes)  // Browse for a folder, then install to the selected folder.
+                        {
+                            if (StorageProvider.CanPickFolder) // Should be true anyway, since this app is only Windows in mind.
+                            {
+                                var folderPickOpts = new FolderPickerOpenOptions()
+                                {
+                                    AllowMultiple = false,
+                                    Title = "Select a folder to install the game to"
+                                };
+
+                                while (true)
+                                {
+                                    var results = await StorageProvider.OpenFolderPickerAsync(folderPickOpts);
+                                    if (results == null || results.Count == 0) break;
+
+                                    var selectedPath = results[0].TryGetLocalPath();
+                                    if (string.IsNullOrEmpty(selectedPath))
+                                    {
+                                        await this.ShowInfoMsgBox("The path to the folder you selected is not a local path.", "Invalid item selected");
+                                        continue;
+                                    }
+                                    
+                                    if (!Directory.Exists(selectedPath))
+                                    {
+                                        if ((await this.ShowYesNoMsgBox("The path you specified doesn't exist. Create destination folder?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.No)
+                                            continue;
+                                    }
+
+                                    if (IsGameExisted(selectedPath))
+                                    {
+                                        if ((await this.ShowYesNoMsgBox("Detected your game client:" + Environment.NewLine
+                                            + selectedPath + Environment.NewLine + Environment.NewLine
+                                            + "Do you want to use this path?" + Environment.NewLine
+                                            + "(The path above is not missing anything, it is where the 'manifest.json' file supposed to be)", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                                        {
+                                            this._launcherConfig.GameClientInstallationPath = selectedPath;
+                                            await this.AfterLoaded_Btn_GameStart();
+                                            break;
+                                        }
+                                    }
+
+                                    if ((await this.ShowYesNoMsgBox("Destination to install SnowBreak game client:" + Environment.NewLine
+                                           + selectedPath + Environment.NewLine + Environment.NewLine
+                                           + "Do you want to install the game to this destination?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                                    {
+                                        selectedPath = Directory.CreateDirectory(selectedPath).FullName;
+                                        this._launcherConfig.GameClientInstallationPath = selectedPath;
+                                        GameManager.SetGameDirectory(selectedPath);
+                                        this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
+                                        this.Btn_StartGame_Click(source, args);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                        else if (selection == MsBox.Avalonia.Enums.ButtonResult.No) // Browse for existing game client
+                        {
+                            if (StorageProvider.CanOpen) // Should be true anyway, since this app is only Windows in mind.
+                            {
+                                var openFileOpts = new FilePickerOpenOptions()
+                                {
+                                    AllowMultiple = false,
+                                    Title = "Browse for existing game client",
+                                    FileTypeFilter = new List<FilePickerFileType>()
+                                    {
+                                        new FilePickerFileType("Game Client File") { Patterns = new string[] { "manifest.json", "game.exe" } },
+                                        FilePickerFileTypes.All
+                                    }
+                                };
+
+                                while (true)
+                                {
+                                    var results = await StorageProvider.OpenFilePickerAsync(openFileOpts);
+                                    if (results == null || results.Count == 0) break;
+
+                                    var path = results[0].TryGetLocalPath();
+                                    if (string.IsNullOrEmpty(path))
+                                    {
+                                        await this.ShowInfoMsgBox("The file you selected is not a physical file.", "Invalid item selected");
+                                        continue;
+                                    }
+
+                                 
+
+                                    static string FolderGoBackFromGameExecutable(string path) => path.Remove(path.Length - GameManager.RelativePathToExecutablePath.Length - 1);
+
+                                    string? selectedInstallationDirectory = IsClientOrManifest(path) switch
+                                    {
+                                        true => System.IO.Path.GetDirectoryName(path),
+                                        false => FolderGoBackFromGameExecutable(path),
+                                        _ => null
+                                    };
+
+                                    if (string.IsNullOrEmpty(selectedInstallationDirectory))
+                                    {
+                                        await this.ShowInfoMsgBox("The file you selected doesn't seem to be the expected SnowBreak game client file.", "Invalid item selected");
+                                        continue;
+                                    }
+
+                                    if ((await this.ShowYesNoMsgBox("Detected your game client:" + Environment.NewLine
+                                        + selectedInstallationDirectory + Environment.NewLine + Environment.NewLine
+                                        + "Do you want to use this path?" + Environment.NewLine
+                                        + "(The path above is not missing anything, it is where the 'manifest.json' file supposed to be)", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
+                                    {
+                                        this._launcherConfig.GameClientInstallationPath = selectedInstallationDirectory;
+                                        await this.AfterLoaded_Btn_GameStart();
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
                     break;
                 case GameStartButtonState.CanStartGame:
                     {
@@ -211,7 +396,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                             {
                                 var updater = gameMgr.Updater;
                                 this.GameStartButtonState = GameStartButtonState.UpdatingGameClient;
-                                var newCancellation = new CancellationTokenSource();
+                                var newCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.cancelSrc_Root.Token);
                                 var oldCancellation = Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, newCancellation);
                                 try
                                 {
@@ -336,6 +521,10 @@ namespace Leayal.SnowBreakLauncher.Windows
                                     uiUpdaterCancellation.Dispose();
                                     Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, null); // Set it back to null
                                     newCancellation.Dispose();
+                                    if (this.cancelSrc_Root.IsCancellationRequested)
+                                    {
+                                        this.Close();
+                                    }
                                 }
                             }
                         }

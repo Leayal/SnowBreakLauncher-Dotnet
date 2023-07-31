@@ -35,10 +35,11 @@ namespace Leayal.SnowBreakLauncher.Classes
 
         public OfficialJsonConfiguration(string filepath)
         {
-            this.fs_config = new FileStream(filepath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read);
+            this.fs_config = new FileStream(filepath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
             this.fs_config.Position = 0;
         }
 
+        /// <summary>Returns path to game client installation.</summary>
         public string GameClientInstallationPath
         {
             get
@@ -65,17 +66,25 @@ namespace Leayal.SnowBreakLauncher.Classes
                 // Only changing "dataPath" value.
                 this.fs_config.Position = 0;
                 bool shouldUpdate = false;
-                JsonElement cloned = default;
-                using (var jsonConf = JsonDocument.Parse(this.fs_config))
+                JsonElement? cloned = null;
+                try
                 {
-                    if (jsonConf.RootElement.TryGetProperty("dataPath", out var prop_dataPath) && prop_dataPath.ValueKind == JsonValueKind.String)
+                    using (var jsonConf = JsonDocument.Parse(this.fs_config))
                     {
-                        if (!string.Equals(prop_dataPath.GetString() ?? string.Empty, value, StringComparison.OrdinalIgnoreCase))
+                        if (jsonConf.RootElement.TryGetProperty("dataPath", out var prop_dataPath) && prop_dataPath.ValueKind == JsonValueKind.String)
                         {
-                            shouldUpdate = true;
-                            cloned = jsonConf.RootElement.Clone();
+                            if (!string.Equals(prop_dataPath.GetString() ?? string.Empty, value, StringComparison.OrdinalIgnoreCase))
+                            {
+                                shouldUpdate = true;
+                                cloned = jsonConf.RootElement.Clone();
+                            }
                         }
                     }
+                }
+                catch (JsonException)
+                { 
+                    cloned = null;
+                    shouldUpdate = true;
                 }
                 if (shouldUpdate)
                 {
@@ -83,16 +92,23 @@ namespace Leayal.SnowBreakLauncher.Classes
                     using (var jsonWriter = new Utf8JsonWriter(this.fs_config, new JsonWriterOptions() { Indented = false }))
                     {
                         jsonWriter.WriteStartObject();
-                        foreach (var obj in cloned.EnumerateObject())
+                        if (cloned.HasValue)
                         {
-                            if (string.Equals(obj.Name, "dataPath", StringComparison.Ordinal))
+                            foreach (var obj in cloned.Value.EnumerateObject())
                             {
-                                jsonWriter.WriteString("dataPath", value);
+                                if (string.Equals(obj.Name, "dataPath", StringComparison.Ordinal))
+                                {
+                                    jsonWriter.WriteString("dataPath", value);
+                                }
+                                else
+                                {
+                                    obj.WriteTo(jsonWriter);
+                                }
                             }
-                            else
-                            {
-                                obj.WriteTo(jsonWriter);
-                            }
+                        }
+                        else
+                        {
+                            jsonWriter.WriteString("dataPath", value);
                         }
                         jsonWriter.WriteEndObject();
                         jsonWriter.Flush();
