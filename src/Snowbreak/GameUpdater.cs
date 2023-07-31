@@ -85,7 +85,7 @@ sealed class GameUpdater
 
     private record struct DownloadResult(bool success, long fileLastWriteTimeInUnixSeconds);
 
-    public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
+    public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, bool skipCrcTableCache = false, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var mgr = this.manager;
         var httpClient = SnowBreakHttpClient.Instance;
@@ -129,7 +129,7 @@ sealed class GameUpdater
                 var path_localPak = mgr.Files.GetFullPath(pak.name);
                 if (FileSystem.PathExists(path_localPak))
                 {
-                    if (bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify))
+                    if (!skipCrcTableCache && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify))
                     {
                         if (localPakInfo.cRC != pak.cRC || localPakInfo.sizeInBytes != pak.sizeInBytes)
                         {

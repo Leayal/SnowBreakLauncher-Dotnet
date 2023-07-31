@@ -207,39 +207,42 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
 
         private string GenerateQuery(string name, string serverURI, ResourceRecordType queryType, string? customContentType = null)
         {
-            var fields = new Dictionary<string, string>()
-            {
-                {"name", Uri.EscapeDataString(name)},
-                {"type", ((int)queryType).ToString()},
-                {"ct", Uri.EscapeDataString(customContentType ?? JsonContentType)},
-                {"cd", RequireDNSSEC ? "false" : "true"},
-            };
+            var sb = new StringBuilder(serverURI, name.Length + serverURI.Length + (UseRandomPadding ? 256 : 128));
+
+            sb.Append("?name=").Append(Uri.EscapeDataString(name));
+            sb.Append("&type=").Append((int)queryType);
+            sb.Append("&ct=").Append(Uri.EscapeDataString(string.IsNullOrWhiteSpace(customContentType) ? JsonContentType : customContentType)); // CT impies Content-Type
+            sb.Append("&cd=").Append(RequireDNSSEC ? "false" : "true"); // CD implies "Check disabled"
+            sb.Append("&do=0"); // DO implies "DNSSEC OK", however, it actually meant to including verbose DNSSEC info in the response or not. It does not force DNSSEC to work.
 
             if (RequestNoGeolocation)
-                fields.Add("edns_client_subnet", Uri.EscapeDataString("0.0.0.0/0"));
+                sb.Append("&edns_client_subnet=").Append(Uri.EscapeDataString("0.0.0.0/0"));
 
             const int padtoLength = 250;
+            if ((sb.Length - 16) < padtoLength && UseRandomPadding)
+            {
+                var padLen = padtoLength - sb.Length - 16;
+                var padStr = string.Create<object?>(padLen, null, (buffer, obj) =>
+                {
+                    GeneratePadding(in buffer);
+                });
+                sb.Append("&random_padding=").Append(Uri.EscapeDataString(padStr));
+            }
 
-            string uri = $"{serverURI}?{Join("&", fields.Select(f => f.Key + "=" + f.Value))}";
-            if (uri.Length - 16 < padtoLength && UseRandomPadding)
-                uri += $"&random_padding={Uri.EscapeDataString(GeneratePadding(padtoLength - uri.Length - 16))}";
-            return uri;
+            return sb.ToString();
         }
 
         private static void HandleDNSError(int statusCode, string? comment)
         {
-            string commentText = comment != null ? $"{Environment.NewLine}Server Comment: ({comment})" : "";
+            string commentText = comment != null ? $"{Environment.NewLine}Server Comment: ({comment})" : string.Empty;
             if (DNSCodes.TryGetValue(statusCode, out var dnsMsg))
                 throw new DNSLookupException($"Received DNS RCode {statusCode} when performing lookup: {dnsMsg}{commentText}");
 
             throw new DNSLookupException($"Received DNS RCode {statusCode} when performing lookup{commentText}");
         }
 
-        private string GeneratePadding(int paddingLength)
-        {
-            const string paddingChars = "abcddefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ012456789-._~";
-            return new string(Random.Shared.GetItems(paddingChars.AsSpan(), paddingLength));
-        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void GeneratePadding(in Span<char> bufferToWrite) => Random.Shared.GetItems("abcddefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ012456789-._~".AsSpan(), bufferToWrite);
 
         public void Dispose()
         {

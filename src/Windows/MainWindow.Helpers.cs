@@ -67,7 +67,7 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
         }
 
-        private void ShowErrorMsgBox(Exception ex)
+        private Task ShowErrorMsgBox(Exception ex)
         {
             ArgumentNullException.ThrowIfNull(ex);
 
@@ -76,7 +76,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                 width = screenWidth / 2,
                 height = screenHeight / 2;
 
-            MessageBoxManager.GetMessageBoxStandard(new MsBox.Avalonia.Dto.MessageBoxStandardParams()
+            return MessageBoxManager.GetMessageBoxStandard(new MsBox.Avalonia.Dto.MessageBoxStandardParams()
             {
                 ButtonDefinitions = ButtonEnum.Ok,
                 CanResize = false,
@@ -97,7 +97,11 @@ namespace Leayal.SnowBreakLauncher.Windows
             }).ShowWindowDialogAsync(this);
         }
 
-        private async ValueTask<ButtonResult> ShowYesNoCancelMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
+        private Task ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction()
+            => this.ShowYesNoMsgBox("It seems you haven't installed the game yet or the launcher doesn't know where it is." + Environment.NewLine
+                    + "Please install or select the game data location before performing this action.", "Confirmation");
+
+        private Task<ButtonResult> ShowYesNoCancelMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
         {
             ArgumentException.ThrowIfNullOrEmpty(content);
             ArgumentException.ThrowIfNullOrEmpty(title);
@@ -118,10 +122,10 @@ namespace Leayal.SnowBreakLauncher.Windows
 
             AdjustManualSize(msgboxparams, sizeToContent);
 
-            return await MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
+            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
         }
 
-        private async ValueTask ShowInfoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Info, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
+        private Task ShowInfoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Info, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
         {
             ArgumentException.ThrowIfNullOrEmpty(content);
             ArgumentException.ThrowIfNullOrEmpty(title);
@@ -143,10 +147,10 @@ namespace Leayal.SnowBreakLauncher.Windows
 
             AdjustManualSize(msgboxparams, sizeToContent);
 
-            await MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
+            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
         }
 
-        private async ValueTask<ButtonResult> ShowYesNoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
+        private Task<ButtonResult> ShowYesNoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
         {
             ArgumentException.ThrowIfNullOrEmpty(content);
             ArgumentException.ThrowIfNullOrEmpty(title);
@@ -168,7 +172,7 @@ namespace Leayal.SnowBreakLauncher.Windows
 
             AdjustManualSize(msgboxparams, sizeToContent);
 
-            return await MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
+            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
         }
     }
 }

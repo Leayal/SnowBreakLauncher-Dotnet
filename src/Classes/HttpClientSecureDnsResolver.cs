@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -24,26 +25,74 @@ namespace Leayal.SnowBreakLauncher.Classes
             handler.ConnectCallback += this.HttpClient_HandleConnect;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        static Socket CreateNewSocket()
+        {
+            var s = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
+            // s.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            // s.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 10);
+            // s.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 10);
+            // s.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 2);
+            return s;
+        }
+
+        private static async Task<Socket> AttemptConnectAsync(DoHClient dnsClient, DnsEndPoint endpointOriginal, string hostname, ResourceRecordType resourceRecordType, CancellationToken cancelToken)
+        {
+            var dnsAnswers = await dnsClient.LookupAsync(hostname, resourceRecordType, cancelToken);
+            if (dnsAnswers == null || dnsAnswers.Answers.Count == 0 || !dnsAnswers.HasAnyIP)
+            {
+                Socket? s = null;
+                try
+                {
+                    s = CreateNewSocket();
+                    await s.ConnectAsync(endpointOriginal, cancelToken);
+                    return s;
+                }
+                catch
+                {
+                    s?.Dispose();
+                    throw;
+                }
+            }
+            else
+            {
+                Exception? last_ex = null;
+                foreach (var ipaddr in dnsAnswers.GetAddress(hostname))
+                {
+                    var newEndpoint = new IPEndPoint(ipaddr, endpointOriginal.Port);
+                    Socket? s = null;
+                    try
+                    {
+                        s = CreateNewSocket();
+                        await s.ConnectAsync(newEndpoint, cancelToken);
+                        return s;
+                    }
+                    catch (Exception ex)
+                    {
+                        s?.Dispose();
+                        last_ex = ex;
+                    }
+                }
+                if (last_ex == null)
+                {
+                    throw new DnsResolveFailureException();
+                }
+                else
+                {
+                    throw last_ex;
+                }
+            }
+        }
+
         private async ValueTask<Stream> HttpClient_HandleConnect(SocketsHttpConnectionContext ctx, CancellationToken cancelToken)
         {
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static Socket CreateNew()
-            {
-                var s = new Socket(SocketType.Stream, ProtocolType.Tcp) { NoDelay = true };
-                // s.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                // s.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveTime, 10);
-                // s.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveInterval, 10);
-                // s.SetSocketOption(SocketOptionLevel.Tcp, SocketOptionName.TcpKeepAliveRetryCount, 2);
-                return s;
-            }
-
             var hostname = ctx.DnsEndPoint.Host;
             if (IPAddress.TryParse(hostname, out var remoteIp))
             {
                 Socket? s = null;
                 try
                 {
-                    s = CreateNew();
+                    s = CreateNewSocket();
                     await s.ConnectAsync(new IPEndPoint(remoteIp, ctx.DnsEndPoint.Port), cancelToken);
                     return new NetworkStream(s, ownsSocket: true);
                 }
@@ -55,13 +104,18 @@ namespace Leayal.SnowBreakLauncher.Classes
             }
             else
             {
-                var dnsAnswers = await this.dnsClient.LookupAsync(hostname, ResourceRecordType.A, cancelToken);
-                if (dnsAnswers == null || dnsAnswers.Answers.Count == 0 || !dnsAnswers.HasAnyIP)
+#if NO_IPV6
+                try
+                {
+                    var socket = await AttemptConnectAsync(this.dnsClient, ctx.DnsEndPoint, hostname, ResourceRecordType.A, cancelToken);
+                    return new NetworkStream(socket, ownsSocket: true);
+                }
+                catch
                 {
                     Socket? s = null;
                     try
                     {
-                        s = CreateNew();
+                        s = CreateNewSocket();
                         await s.ConnectAsync(ctx.DnsEndPoint, cancelToken);
                         return new NetworkStream(s, ownsSocket: true);
                     }
@@ -71,35 +125,45 @@ namespace Leayal.SnowBreakLauncher.Classes
                         throw;
                     }
                 }
-                else
+#else
+                try
                 {
-                    Exception? last_ex = null;
-                    foreach (var ipaddr in dnsAnswers.GetAddress(hostname))
+                    if (Socket.OSSupportsIPv6)
                     {
-                        var newEndpoint = new IPEndPoint(ipaddr, ctx.DnsEndPoint.Port);
-                        Socket? s = null;
                         try
                         {
-                            s = CreateNew();
-                            await s.ConnectAsync(newEndpoint, cancelToken);
-                            return new NetworkStream(s, ownsSocket: true);
+                            var socket = await AttemptConnectAsync(this.dnsClient, ctx.DnsEndPoint, hostname, ResourceRecordType.AAAA, cancelToken);
+                            return new NetworkStream(socket, ownsSocket: true);
                         }
-                        catch (Exception ex)
+                        catch
                         {
-                            s?.Dispose();
-                            last_ex = ex;
+                            var socket = await AttemptConnectAsync(this.dnsClient, ctx.DnsEndPoint, hostname, ResourceRecordType.A, cancelToken);
+                            return new NetworkStream(socket, ownsSocket: true);
                         }
-                    }
-                    if (last_ex == null)
-                    {
-                        throw new DnsResolveFailureException();
                     }
                     else
                     {
-                        throw last_ex;
+                        var socket = await AttemptConnectAsync(this.dnsClient, ctx.DnsEndPoint, hostname, ResourceRecordType.A, cancelToken);
+                        return new NetworkStream(socket, ownsSocket: true);
                     }
                 }
-            }
+                catch
+                {
+                    Socket? s = null;
+                    try
+                    {
+                        s = CreateNewSocket();
+                        await s.ConnectAsync(ctx.DnsEndPoint, cancelToken);
+                        return new NetworkStream(s, ownsSocket: true);
+                    }
+                    catch
+                    {
+                        s?.Dispose();
+                        throw;
+                    }
+                }
+#endif
+                }
         }
 
         /*

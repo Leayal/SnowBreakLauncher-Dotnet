@@ -12,17 +12,18 @@
 	<Authors>Dramiel Leayal</Authors>
 	<Company>Dramiel Leayal</Company>
 	<DefineTrace>false</DefineTrace>
-	<DefineConstants>$(DefineConstants);NO_WMI;NO_IPV6</DefineConstants>
+	  <!--
+	  Additional constants are: 
+	  - NO_WMI: Not WMI to listen for ProcessStart and ProcessEnd events, fallback to polling. If publishing Trimming, WMI will not work (as of writing this). Enable this flag if build/publish with Trimming.
+	  - NO_IPV6: Disallow this application connecting to IPv6 destinations regardless OS supports IPv6 or not.
+	  -->
+	<DefineConstants>$(DefineConstants);NO_WMI</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishAot>true</PublishAot>
     <DefineTrace>false</DefineTrace>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="Classes\DnsCache.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Remove="snowbreak.ico" />
@@ -54,9 +55,5 @@
 
   <ItemGroup>
     <UpToDateCheckInput Remove="Controls\LauncherNewsItemListView.axaml" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="Classes\DnsCache.cs" />
   </ItemGroup>
 </Project>

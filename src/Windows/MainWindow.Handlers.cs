@@ -16,6 +16,7 @@ using System.Threading;
 using Avalonia.Platform.Storage;
 using System.IO;
 using Avalonia;
+using Leayal.Shared.Windows;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
@@ -94,7 +95,7 @@ namespace Leayal.SnowBreakLauncher.Windows
         private async Task AfterLoaded_Btn_GameStart()
         {
             var installedDirectory = this._launcherConfig.GameClientInstallationPath;
-            if (string.IsNullOrEmpty(installedDirectory) || !IsGameExisted(System.IO.Path.GetFullPath(installedDirectory)))
+            if (string.IsNullOrEmpty(installedDirectory) || !IsGameExisted(Path.GetFullPath(installedDirectory)))
             {
                 // Game isn't installed or not detected
                 this.GameStartButtonState = GameStartButtonState.NeedInstall;
@@ -169,6 +170,7 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
             this._launcherConfig.Dispose();
             this.carouselAutoplay.Dispose();
+            this.cancelSrc_Root?.Dispose();
             base.OnClosed(e);
         }
 
@@ -186,6 +188,69 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
         }
 
+        public void BtnSettings_Click(object source, RoutedEventArgs args)
+        {
+            var btn = (source as Button) ?? (args.Source as Button);
+            if (btn == null) return;
+            if (btn.ContextMenu is ContextMenu ctxMenu) ctxMenu.Open(btn);
+        }
+
+        public async void MenuItem_OpenGameDataDirectory_Click(object source, RoutedEventArgs args)
+        {
+            var gameMgr = GameManager.Instance as GameManager;
+            if (gameMgr == null)
+            {
+                await this.ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction();
+                return;
+            }
+            WindowsExplorerHelper.SelectPathInExplorer(new string(gameMgr.FullPathOfGameDirectory));
+        }
+
+        public async void MenuItem_ChangeGameClientDirectory_Click(object source, RoutedEventArgs args)
+        {
+            var gameMgr = GameManager.Instance as GameManager;
+            if (gameMgr == null)
+            {
+                await this.ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction();
+                return;
+            }
+
+            if (this.GameStartButtonState != GameStartButtonState.CanStartGame) return;
+            await this.StuckInLoop_BrowseGameFolder();
+        }
+
+        public async void MenuItem_GameDataIntegrityCheck_Click(object source, RoutedEventArgs args)
+        {
+            var gameMgr = GameManager.Instance as GameManager;
+            if (gameMgr == null)
+            {
+                await this.ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction();
+                return;
+            }
+
+            if (this.GameStartButtonState != GameStartButtonState.CanStartGame) return;
+
+            if ((await ShowYesNoMsgBox("Are you sure you want to begin file integrity check and download missing/damaged files?" + Environment.NewLine
+                + "(This action will take a short time or long time, depending on your disk's speed)", "Confirmation")) != MsBox.Avalonia.Enums.ButtonResult.Yes)
+            {
+                return;
+            }
+
+            try
+            {
+                await this.PerformGameClientUpdate(gameMgr, true);
+            }
+            catch (OperationCanceledException) { } // Silence it, user intentionally cancel it anyway
+            catch (Exception ex)
+            {
+                await this.ShowErrorMsgBox(ex);
+            }
+            finally
+            {
+                this.GameStartButtonState = GameStartButtonState.CanStartGame;
+            }
+        }
+
         public async void Btn_StartGame_Click(object source, RoutedEventArgs args)
         {
             var localvar_btnGameStartState = this.GameStartButtonState; // can access field "this._gameStartButtonState" directly for performance;
@@ -197,7 +262,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                         var installedDirectory = this._launcherConfig.GameClientInstallationPath;
                         if (!string.IsNullOrEmpty(installedDirectory))
                         {
-                            installedDirectory = System.IO.Path.GetFullPath(installedDirectory);
+                            installedDirectory = Path.GetFullPath(installedDirectory);
                             if (IsGameExisted(installedDirectory))
                             {
                                 if ((await ShowYesNoMsgBox("It seems like the configuration has changed." + Environment.NewLine
@@ -269,61 +334,20 @@ namespace Leayal.SnowBreakLauncher.Windows
                                     }
                                 }
                             }
+                            else
+                            {
+                                await this.ShowInfoMsgBox("This action Your OS is not supported. Something went wrong!!!", "Error", MsBox.Avalonia.Enums.Icon.Error);
+                            }
                         }
                         else if (selection == MsBox.Avalonia.Enums.ButtonResult.No) // Browse for existing game client
                         {
                             if (StorageProvider.CanOpen) // Should be true anyway, since this app is only Windows in mind.
                             {
-                                var openFileOpts = new FilePickerOpenOptions()
-                                {
-                                    AllowMultiple = false,
-                                    Title = "Browse for existing game client",
-                                    FileTypeFilter = new List<FilePickerFileType>()
-                                    {
-                                        new FilePickerFileType("Game Client File") { Patterns = new string[] { "manifest.json", "game.exe" } },
-                                        FilePickerFileTypes.All
-                                    }
-                                };
-
-                                while (true)
-                                {
-                                    var results = await StorageProvider.OpenFilePickerAsync(openFileOpts);
-                                    if (results == null || results.Count == 0) break;
-
-                                    var path = results[0].TryGetLocalPath();
-                                    if (string.IsNullOrEmpty(path))
-                                    {
-                                        await this.ShowInfoMsgBox("The file you selected is not a physical file.", "Invalid item selected");
-                                        continue;
-                                    }
-
-                                 
-
-                                    static string FolderGoBackFromGameExecutable(string path) => path.Remove(path.Length - GameManager.RelativePathToExecutablePath.Length - 1);
-
-                                    string? selectedInstallationDirectory = IsClientOrManifest(path) switch
-                                    {
-                                        true => System.IO.Path.GetDirectoryName(path),
-                                        false => FolderGoBackFromGameExecutable(path),
-                                        _ => null
-                                    };
-
-                                    if (string.IsNullOrEmpty(selectedInstallationDirectory))
-                                    {
-                                        await this.ShowInfoMsgBox("The file you selected doesn't seem to be the expected SnowBreak game client file.", "Invalid item selected");
-                                        continue;
-                                    }
-
-                                    if ((await this.ShowYesNoMsgBox("Detected your game client:" + Environment.NewLine
-                                        + selectedInstallationDirectory + Environment.NewLine + Environment.NewLine
-                                        + "Do you want to use this path?" + Environment.NewLine
-                                        + "(The path above is not missing anything, it is where the 'manifest.json' file supposed to be)", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
-                                    {
-                                        this._launcherConfig.GameClientInstallationPath = selectedInstallationDirectory;
-                                        await this.AfterLoaded_Btn_GameStart();
-                                        break;
-                                    }
-                                }
+                                await this.StuckInLoop_BrowseGameFolder();
+                            }
+                            else
+                            {
+                                await this.ShowInfoMsgBox("This action Your OS is not supported. Something went wrong!!!", "Error", MsBox.Avalonia.Enums.Icon.Error);
                             }
                         }
                     }
@@ -369,7 +393,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                                         catch (Exception ex)
                                         {
                                             this.GameStartButtonState = GameStartButtonState.CanStartGame;
-                                            this.ShowErrorMsgBox(ex);
+                                            await this.ShowErrorMsgBox(ex);
                                             // MessageBox.Avalonia.MessageBoxManager
                                         }
                                     }
@@ -394,138 +418,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                             }
                             else
                             {
-                                var updater = gameMgr.Updater;
-                                this.GameStartButtonState = GameStartButtonState.UpdatingGameClient;
-                                var newCancellation = CancellationTokenSource.CreateLinkedTokenSource(this.cancelSrc_Root.Token);
-                                var oldCancellation = Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, newCancellation);
-                                try
-                                {
-                                    if (oldCancellation != null)
-                                    {
-                                        oldCancellation.Cancel();
-                                        oldCancellation.Dispose();
-                                    }
-                                }
-                                catch { }
-                                Action StopIndetermined = () =>
-                                {
-                                    this.ProgressBar_Total.ProgressTextFormat = "File check and downloading ({1}%)";
-                                    this.ProgressBar_Total.IsIndeterminate = false;
-                                    this.ProgressBar_Download1.IsIndeterminate = false;
-                                    this.ProgressBar_Download2.IsIndeterminate = false;
-                                    this.ProgressBar_Download1.ShowProgressText = true;
-                                    this.ProgressBar_Download2.ShowProgressText = true;
-                                };
-                                var progressCallback = new GameUpdaterProgressCallback(() =>
-                                {
-                                    if (this.ProgressBar_Total.CheckAccess())
-                                    {
-                                        StopIndetermined.Invoke();
-                                    }
-                                    else
-                                    {
-                                        // Should be here, since we're under different thread that invoked this callback.
-                                        Dispatcher.UIThread.InvokeAsync(StopIndetermined);
-                                    }
-                                });
-                                this.ProgressBar_Total.IsIndeterminate = true;
-                                this.ProgressBar_Download1.IsIndeterminate = true;
-                                this.ProgressBar_Download2.IsIndeterminate = true;
-                                this.ProgressBar_Total.ProgressTextFormat = "Downloading manifest from remote host";
-                                this.ProgressBar_Download1.ShowProgressText = false;
-                                this.ProgressBar_Download2.ShowProgressText = false;
-                                var uiUpdaterCancellation = DispatcherTimer.Run(() =>
-                                {
-                                    if (!this.ProgressBar_Total.IsIndeterminate)
-                                    {
-                                        // Yes, max is 50%, we split the "Total Progress" bar into 2, half for file checking, the other half for file downloading.
-                                        if (progressCallback.FileCheckProgress.IsDone && progressCallback.TotalDownloadProgress.IsDone)
-                                        {
-                                            this.ProgressBar_Total.Value = 100;
-                                        }
-                                        else
-                                        {
-                                            if (progressCallback.FileCheckProgress.IsDone)
-                                            {
-                                                this.ProgressBar_Total.Value = progressCallback.TotalDownloadProgress.GetPercentile();
-                                            }
-                                            else if (progressCallback.TotalDownloadProgress.IsDone)
-                                            {
-                                                this.ProgressBar_Total.Value = progressCallback.FileCheckProgress.GetPercentile();
-                                            }
-                                            else
-                                            {
-                                                long sumCurrent = progressCallback.TotalDownloadProgress.CurrentProgress + progressCallback.FileCheckProgress.CurrentProgress,
-                                                    sumTotal = progressCallback.TotalDownloadProgress.TotalProgress + progressCallback.FileCheckProgress.TotalProgress;
-
-                                                var tmp = (sumCurrent * 100d) / sumTotal;
-                                                this.ProgressBar_Total.Value = tmp;
-                                            }
-                                        }
-                                    }
-                                    static void UpdateProgressBar(GameUpdaterDownloadProgressValue progress, ProgressBar attachedprogressbar)
-                                    {
-                                        /* String.Format of the Avalonia ProgressBarText
-                                        0 = Value
-                                        1 = Value as a Percentage from 0 to 100 (e.g. Minimum = 0, Maximum = 50, Value = 25, then Percentage = 50)
-                                        2 = Minimum
-                                        3 = Maximum
-                                        */
-                                        var oldFilename = attachedprogressbar.Tag as string;
-                                        if (!string.Equals(oldFilename, progress.Filename, StringComparison.Ordinal))
-                                        {
-                                            attachedprogressbar.Tag = progress.Filename;
-                                            attachedprogressbar.ProgressTextFormat = string.Concat(System.IO.Path.GetFileName(progress.Filename.AsSpan()), " ({1}%)");
-                                        }
-                                        if (progress.IsDone)
-                                        {
-                                            attachedprogressbar.Value = 100;
-                                        }
-                                        else if (progress.TotalProgress == 0 || attachedprogressbar.IsIndeterminate)
-                                        {
-                                            attachedprogressbar.Value = 0;
-                                        }
-                                        else
-                                        {
-                                            attachedprogressbar.Value = progress.GetPercentile();
-                                        }
-                                    }
-
-                                    UpdateProgressBar(progressCallback.Download1Progress, this.ProgressBar_Download1);
-                                    UpdateProgressBar(progressCallback.Download2Progress, this.ProgressBar_Download2);
-
-                                    return true;
-                                }, TimeSpan.FromMilliseconds(50), DispatcherPriority.Render);
-                                try
-                                {
-                                    var cancelToken = newCancellation.Token;
-                                    await updater.UpdateGameClientAsync(progressCallback: progressCallback, cancellationToken: cancelToken);
-
-                                    if (await updater.CheckForUpdatesAsync(cancelToken))
-                                    {
-                                        this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
-                                    }
-                                    else
-                                    {
-                                        this.GameStartButtonState = GameStartButtonState.CanStartGame;
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
-                                    this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
-                                    if (ex is not OperationCanceledException)
-                                        this.ShowErrorMsgBox(ex);
-                                }
-                                finally
-                                {
-                                    uiUpdaterCancellation.Dispose();
-                                    Interlocked.Exchange(ref this.cancelSrc_UpdateGameClient, null); // Set it back to null
-                                    newCancellation.Dispose();
-                                    if (this.cancelSrc_Root.IsCancellationRequested)
-                                    {
-                                        this.Close();
-                                    }
-                                }
+                                await this.PerformGameClientUpdate(gameMgr);
                             }
                         }
                     }

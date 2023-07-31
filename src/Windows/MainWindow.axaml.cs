@@ -9,6 +9,8 @@ using Leayal.SnowBreakLauncher.Snowbreak;
 using Leayal.SnowBreakLauncher.Classes;
 using Leayal.SnowBreakLauncher.Controls;
 using System;
+using Avalonia.Interactivity;
+using Avalonia.Input;
 
 namespace Leayal.SnowBreakLauncher.Windows;
 
@@ -117,6 +119,14 @@ public partial class MainWindow : Window
                         window.ProgressBar_Main.IsIndeterminate = false;
                         window.ProgressBar_Main.IsVisible = false;
                         window.BtnText_StartGame.Text = "Install or select existing game files";
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
+                        break;
+                    case GameStartButtonState.PreparingGeneric:
+                        window.Btn_StartGame.IsEnabled = false;
+                        window.ProgressBar_Main.IsIndeterminate = true;
+                        window.ProgressBar_Main.IsVisible = true;
+                        window.BtnText_StartGame.Text = "Preparing";
 
                         window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
