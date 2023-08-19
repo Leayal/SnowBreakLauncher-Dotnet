@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+	  <!--
+	  As of writing this, the SDK version was still in preview, specifically: v8.0.100-preview.7
+	  In case the higher SDK versions or the release versions of the SDK can't be used to build this csproj due to breaking changes, try the SDK version above.
+	  -->
     <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
 	<ImplicitUsings>disable</ImplicitUsings>
@@ -14,7 +18,7 @@
 	<DefineTrace>false</DefineTrace>
 	  <!--
 	  Additional constants are: 
-	  - NO_WMI: Not WMI to listen for ProcessStart and ProcessEnd events, fallback to polling. If publishing Trimming, WMI will not work (as of writing this). Enable this flag if build/publish with Trimming.
+	  - NO_WMI: Disallow using WMI to listen for ProcessStart and ProcessEnd events, fallback to polling. If publishing Trimming, WMI will not work (as of writing this). Enable this flag if build/publish with Trimming.
 	  - NO_IPV6: Disallow this application connecting to IPv6 destinations regardless OS supports IPv6 or not.
 	  -->
 	<DefineConstants>$(DefineConstants);NO_WMI</DefineConstants>
@@ -42,15 +46,15 @@
 	 <PrivateAssets>all</PrivateAssets>
 	</PackageReference>
 	<PackageReference Condition="!$(DefineConstants.Contains('NO_WMI'))" Include="System.Management" Version="8.0.0-preview.6.23329.7" />
-    <PackageReference Include="Avalonia" Version="11.0.1" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.0.1" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.1" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.1" />
-	<PackageReference Include="MessageBox.Avalonia" Version="3.1.2" />
+    <PackageReference Include="Avalonia" Version="11.0.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.0.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.3" />
+	<PackageReference Include="MessageBox.Avalonia" Version="3.1.4" />
     <!--"Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration." is partially wrong-->
 	<!--As of avalon v11.0.0, for whatever reasons, building with configuration Release without this package will simply fail with XAML Parse error (Unable to resolve type SimpleTheme from namespace https://github.com/avaloniaui)-->
 	<!--The option to workaround this is not using SimpleTheme, or including this package below to build with SimpleTheme.-->  
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.1" />
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.3" />
   </ItemGroup>
 
   <ItemGroup>

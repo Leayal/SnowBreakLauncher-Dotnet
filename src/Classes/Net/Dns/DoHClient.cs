@@ -2,15 +2,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Frozen;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Runtime.CompilerServices;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using static System.String;
 
 namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
 {
@@ -45,7 +42,8 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
             { 21, "Algorithm not supported" },
             { 22, "Bad Truncation" },
             { 23, "Bad/missing Server Cookie" }
-        }.ToFrozenDictionary(null, true);
+        }.ToFrozenDictionary(); // As of .NET8 preview 7, Frozen Dictionary implies OptimizedReading, no longer OptimizedCreating.
+
         private string[] _endpointList = 
         {
             CloudflareURI, GoogleURI

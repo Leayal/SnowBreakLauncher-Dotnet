@@ -1,5 +1,7 @@
 @echo off
 SETLOCAL
+REM %~dp0 is a batch script implicit variable.
+REM The variable is a string which is the full path to THE DIRECTORY WHICH CONTAINS THIS BATCH SCRIPT.
 @cd /d %~dp0
 
 SET "DOTNET_CLI_TELEMETRY_OPTOUT=1"
