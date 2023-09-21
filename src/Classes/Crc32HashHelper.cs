@@ -47,6 +47,5 @@ namespace Leayal.SnowBreakLauncher.Classes
             }
             return ~currentHash;
         }
-
     }
 }

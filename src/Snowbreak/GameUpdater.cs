@@ -8,6 +8,7 @@ using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -53,7 +54,7 @@ sealed class GameUpdater
                 {
                     if (localPaks.TryGetValue(pakInfo.name, out var localPakInfo) && IsFastVerifyMatched(mgrFile.GetFullPath(pakInfo.name), localPakInfo.fastVerify))
                     {
-                        if (localPakInfo.cRC != pakInfo.cRC) return true;
+                        if (!string.Equals(localPakInfo.hash, pakInfo.hash, StringComparison.OrdinalIgnoreCase)) return true;
                     }
                     else return true; // Immediately return, not breaking out of loop.
                 }
@@ -100,9 +101,23 @@ sealed class GameUpdater
         {
             task_getRemoteManifest = new ValueTask<GameClientManifestData>(httpClient.GetGameClientManifestAsync(cancellationToken));
         }
-        IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable = (localManifest.HasValue ?
-            FrozenDictionary.ToFrozenDictionary(localManifest.Value.GetPaks(), pak => pak.name, StringComparer.OrdinalIgnoreCase)
-            : System.Collections.Immutable.ImmutableDictionary<string, PakEntry>.Empty);
+
+        IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable;
+
+        if (localManifest.HasValue)
+        {
+            var dictionary = new Dictionary<string, PakEntry>(localManifest.Value.PakCount, StringComparer.OrdinalIgnoreCase);
+            foreach (var pakEntry in localManifest.Value.GetPaks())
+            {
+                // dictionary.TryAdd(pakEntry.name, pakEntry);
+                dictionary[pakEntry.name] = pakEntry;
+            }
+            bufferedLocalFileTable = FrozenDictionary.ToFrozenDictionary(dictionary, StringComparer.OrdinalIgnoreCase);
+        }
+        else
+        {
+            bufferedLocalFileTable = System.Collections.Immutable.ImmutableDictionary<string, PakEntry>.Empty;
+        }
 
         var remoteManifest = await task_getRemoteManifest;
         var totalPak = remoteManifest.PakCount;
@@ -123,53 +138,77 @@ sealed class GameUpdater
                 callback.TotalProgress = totalPak;
             }
             var callback_downloadCount = progressCallback?.TotalDownloadProgress;
-            foreach (var pak in remoteManifest.GetPaks())
+            using (var incrementalMD5 = IncrementalHash.CreateHash(HashAlgorithmName.MD5))
             {
-                if (cancellationToken.IsCancellationRequested) break;
-                var path_localPak = mgr.Files.GetFullPath(pak.name);
-                if (FileSystem.PathExists(path_localPak))
+                var borrowed = ArrayPool<byte>.Shared.Rent(1024 * 32);
+                var checkedFile = new HashSet<string>(totalPak, StringComparer.OrdinalIgnoreCase);
+                try
                 {
-                    if (!skipCrcTableCache && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify))
+                    foreach (var pak in remoteManifest.GetPaks())
                     {
-                        if (localPakInfo.cRC != pak.cRC || localPakInfo.sizeInBytes != pak.sizeInBytes)
+                        if (cancellationToken.IsCancellationRequested) break;
+
+                        // Avoid duplicate entries from the server, it's dumb, btw.
+                        if (!checkedFile.Add(pak.name))
+                        {
+                            callback?.IncreaseCurrentProgress();
+                            continue;
+                        }
+
+                        var path_localPak = mgr.Files.GetFullPath(pak.name);
+                        if (FileSystem.PathExists(path_localPak))
+                        {
+                            if (!skipCrcTableCache && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
+                            {
+                                if (!string.Equals(localPakInfo.hash, pak.hash, StringComparison.OrdinalIgnoreCase) || localPakInfo.sizeInBytes != pak.sizeInBytes)
+                                {
+                                    callback_downloadCount?.IncreaseTotalProgress();
+                                    needUpdatedOnes.Add(pak);
+                                    continue;
+                                }
+                            }
+                            else
+                            {
+
+                                using (var fs = new FileStream(path_localPak, FileMode.Open, FileAccess.Read, FileShare.Read, 0))
+                                {
+                                    if (fs.Length != pak.sizeInBytes)
+                                    {
+                                        callback_downloadCount?.IncreaseTotalProgress();
+                                        needUpdatedOnes.Add(pak);
+                                        continue;
+                                    }
+                                    incrementalMD5.FillDataFromStream(fs, borrowed);
+                                    var hashLenInBytes = incrementalMD5.GetHashAndReset(borrowed);
+                                    var hash = Convert.ToHexString(new ReadOnlySpan<byte>(borrowed, 0, hashLenInBytes));
+                                    if (!string.Equals(hash, pak.hash, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        callback_downloadCount?.IncreaseTotalProgress();
+                                        needUpdatedOnes.Add(pak);
+                                        continue;
+                                    }
+
+                                    var fileCreationTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(fs.SafeFileHandle))).ToUnixTimeSeconds();
+
+                                    finishedOnes.AddOrUpdate(pak, new DownloadResult(true, fileCreationTimeUnixSeconds), (p, oldValue) => new DownloadResult(true, fileCreationTimeUnixSeconds));
+                                }
+                            }
+                        }
+                        else
                         {
                             callback_downloadCount?.IncreaseTotalProgress();
                             needUpdatedOnes.Add(pak);
-                            continue;
                         }
-                    }
-                    else
-                    {
-                        using (var fs = new FileStream(path_localPak, FileMode.Open, FileAccess.Read, FileShare.Read, 0))
-                        {
-                            if (fs.Length != pak.sizeInBytes)
-                            {
-                                callback_downloadCount?.IncreaseTotalProgress();
-                                needUpdatedOnes.Add(pak);
-                                continue;
-                            }
 
-                            var crc = Crc32HashHelper.ComputeFromStream(fs);
-                            if (crc != pak.cRC)
-                            {
-                                callback_downloadCount?.IncreaseTotalProgress();
-                                needUpdatedOnes.Add(pak);
-                                continue;
-                            }
-
-                            var fileCreationTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(fs.SafeFileHandle))).ToUnixTimeSeconds();
-
-                            finishedOnes.AddOrUpdate(pak, new DownloadResult(true, fileCreationTimeUnixSeconds), (p, oldValue) => new DownloadResult(true, fileCreationTimeUnixSeconds));
-                        }
+                        callback?.IncreaseCurrentProgress();
                     }
                 }
-                else
+                finally
                 {
-                    callback_downloadCount?.IncreaseTotalProgress();
-                    needUpdatedOnes.Add(pak);
+                    ArrayPool<byte>.Shared.Return(borrowed);
+                    checkedFile.Clear();
+                    checkedFile = null;
                 }
-
-                callback?.IncreaseCurrentProgress();
             }
 
             needUpdatedOnes.CompleteAdding();
@@ -187,137 +226,141 @@ sealed class GameUpdater
             var progressCallback = obj as GameUpdaterDownloadProgressValue;
             var borrowedBuffer = ArrayPool<byte>.Shared.Rent(1024 * 32); // Borrow a buffer with the size at least to be 32KB, it may returns a bigger buffer
             int maxBufferSize = Math.Min(borrowedBuffer.Length, 1024 * 64); // Should only use up to 64KB
-            var crcHasher = new IncrementalCrc32Hash();
-            try
+            using (var md5Hasher = IncrementalHash.CreateHash(HashAlgorithmName.MD5))
             {
-                while (!needUpdatedOnes.IsCompleted && !cancellationToken.IsCancellationRequested)
+                try
                 {
-                    if (needUpdatedOnes.TryTake(out var pak))
+                    while (!needUpdatedOnes.IsCompleted && !cancellationToken.IsCancellationRequested)
                     {
-                        try
+                        if (needUpdatedOnes.TryTake(out var pak))
                         {
-                            var relativeFile = pak.name;
-                            if (progressCallback != null)
+                            try
                             {
-                                progressCallback.Filename = relativeFile;
-                                progressCallback.CurrentProgress = 0;
-                                progressCallback.TotalProgress = 1;
-                                progressCallback.IsDone = false;
-                            }
-                            var pathTo_LocalFile = mgr.Files.GetFullPath(pak.name);
-                            var pathTo_LocalFileTmp = pathTo_LocalFile + ".dl_ing";
-                            var httpClient = SnowBreakHttpClient.Instance;
-
-                            bool isOkay = false;
-                            long lastWriteTimeUnixSeconds = -1;
-
-                            using (var response = await httpClient.GetFileDownloadResponseAsync(remoteManifest, pak.name, cancellationToken))
-                            {
-                                if (!response.IsSuccessStatusCode)
+                                var relativeFile = pak.name;
+                                if (progressCallback != null)
                                 {
-                                    finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
-                                    continue;
+                                    progressCallback.Filename = relativeFile;
+                                    progressCallback.CurrentProgress = 0;
+                                    progressCallback.TotalProgress = 1;
+                                    progressCallback.IsDone = false;
                                 }
+                                var pathTo_LocalFile = mgr.Files.GetFullPath(pak.name);
+                                var pathTo_LocalFileTmp = pathTo_LocalFile + ".dl_ing";
+                                var httpClient = SnowBreakHttpClient.Instance;
 
-                                using (var responseStream = response.Content.ReadAsStream())
+                                bool isOkay = false;
+                                long lastWriteTimeUnixSeconds = -1;
+
+                                using (var response = await httpClient.GetFileDownloadResponseAsync(in remoteManifest, in pak, cancellationToken))
                                 {
-                                    var header_contentLength = response.Content.Headers.ContentLength;
-                                    long contentLength = header_contentLength.HasValue ? header_contentLength.Value : 0L;
-                                    if (Path.GetDirectoryName(pathTo_LocalFileTmp) is string directoryPath)
+                                    if (!response.IsSuccessStatusCode)
                                     {
-                                        Directory.CreateDirectory(directoryPath);
+                                        finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
+                                        continue;
                                     }
-                                    bool addRefSuccess = false;
-                                    using (var fHandle = File.OpenHandle(pathTo_LocalFileTmp, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, FileOptions.None, contentLength))
-                                    {  
-                                        fHandle.DangerousAddRef(ref addRefSuccess);
-                                        using (var fs = new FileStream(fHandle, FileAccess.ReadWrite, 0 /* We use our big fat 32KB+ buffer above */))
+
+                                    using (var responseStream = response.Content.ReadAsStream())
+                                    {
+                                        var header_contentLength = response.Content.Headers.ContentLength;
+                                        long contentLength = header_contentLength.HasValue ? header_contentLength.Value : 0L;
+                                        if (Path.GetDirectoryName(pathTo_LocalFileTmp) is string directoryPath)
                                         {
-                                            fs.Position = 0;
-                                            if (progressCallback != null) progressCallback.TotalProgress = contentLength;
-
-                                            crcHasher.Reset();
-                                            int read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
-                                            while (read > 0 && !cancellationToken.IsCancellationRequested)
+                                            Directory.CreateDirectory(directoryPath);
+                                        }
+                                        bool addRefSuccess = false;
+                                        using (var fHandle = File.OpenHandle(pathTo_LocalFileTmp, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, FileOptions.None, contentLength))
+                                        {
+                                            fHandle.DangerousAddRef(ref addRefSuccess);
+                                            using (var fs = new FileStream(fHandle, FileAccess.ReadWrite, 0 /* We use our big fat 32KB+ buffer above */))
                                             {
-                                                fs.Write(borrowedBuffer, 0, read);
-                                                crcHasher.Append(borrowedBuffer.AsSpan(0, read));
-                                                if (progressCallback != null) progressCallback?.IncreaseCurrentProgress(in read);
-                                                read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
-                                            }
+                                                fs.Position = 0;
+                                                if (progressCallback != null) progressCallback.TotalProgress = contentLength;
 
-                                            fs.Flush();
-                                            if (!cancellationToken.IsCancellationRequested)
-                                            {
-                                                if (crcHasher.HashRaw == pak.cRC)
+                                                int read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
+                                                while (read > 0 && !cancellationToken.IsCancellationRequested)
                                                 {
-                                                    isOkay = true;
-                                                    // Fix the length if necessary
-                                                    var currentLen = fs.Position;
-                                                    if (currentLen != fs.Length)
+                                                    fs.Write(borrowedBuffer, 0, read);
+                                                    md5Hasher.AppendData(borrowedBuffer.AsSpan(0, read));
+                                                    if (progressCallback != null) progressCallback?.IncreaseCurrentProgress(in read);
+                                                    read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
+                                                }
+
+                                                fs.Flush();
+
+                                                var hashLenInBytes = md5Hasher.GetHashAndReset(borrowedBuffer);
+                                                var hashOfDownloaded = Convert.ToHexString(borrowedBuffer, 0, hashLenInBytes);
+                                                if (!cancellationToken.IsCancellationRequested)
+                                                {
+                                                    if (string.Equals(hashOfDownloaded, pak.hash, StringComparison.OrdinalIgnoreCase))
                                                     {
-                                                        fs.SetLength(currentLen);
+                                                        isOkay = true;
+                                                        // Fix the length if necessary
+                                                        var currentLen = fs.Position;
+                                                        if (currentLen != fs.Length)
+                                                        {
+                                                            fs.SetLength(currentLen);
+                                                        }
                                                     }
                                                 }
                                             }
+                                            if (addRefSuccess)
+                                            {
+                                                try
+                                                {
+                                                    lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(fHandle))).ToUnixTimeSeconds();
+                                                }
+                                                finally
+                                                {
+                                                    fHandle.DangerousRelease();
+                                                }
+                                            }
                                         }
-                                        if (addRefSuccess)
+                                        if (!addRefSuccess)
                                         {
-                                            try
-                                            {
-                                                lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(fHandle))).ToUnixTimeSeconds();
-                                            }
-                                            finally
-                                            {
-                                                fHandle.DangerousRelease();
-                                            }
+                                            lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(pathTo_LocalFileTmp))).ToUnixTimeSeconds();
                                         }
                                     }
-                                    if (!addRefSuccess)
+                                }
+
+                                if (isOkay)
+                                {
+                                    try
                                     {
-                                        lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(pathTo_LocalFileTmp))).ToUnixTimeSeconds();
+                                        FileSystem.MoveOverwrite_AwareReadOnly(pathTo_LocalFileTmp, pathTo_LocalFile);
+                                        finishedOnes.AddOrUpdate(pak, new DownloadResult(true, lastWriteTimeUnixSeconds), (p, oldValue) => new DownloadResult(true, lastWriteTimeUnixSeconds));
+                                    }
+                                    catch
+                                    {
+                                        finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
                                     }
                                 }
-                            }
-
-                            if (isOkay)
-                            {
-                                try
+                                else
                                 {
-                                    FileSystem.MoveOverwrite_AwareReadOnly(pathTo_LocalFileTmp, pathTo_LocalFile);
-                                    finishedOnes.AddOrUpdate(pak, new DownloadResult(true, lastWriteTimeUnixSeconds), (p, oldValue) => new DownloadResult(true, lastWriteTimeUnixSeconds));
-                                }
-                                catch
-                                {
+                                    try
+                                    {
+                                        File.Delete(pathTo_LocalFileTmp);
+                                    }
+                                    catch { }
                                     finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
                                 }
+
+                                progressCallback?.OnComplete();
                             }
-                            else
+                            catch
                             {
-                                try
-                                {
-                                    File.Delete(pathTo_LocalFileTmp);
-                                }
-                                catch { }
                                 finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
                             }
-
-                            progressCallback?.OnComplete();
                         }
-                        catch
+                        else
                         {
-                            finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
+                            await Task.Delay(10);
                         }
-                    }
-                    else
-                    {
-                        await Task.Delay(10);
                     }
                 }
-            }
-            finally
-            {
-                ArrayPool<byte>.Shared.Return(borrowedBuffer);
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(borrowedBuffer);
+                }
             }
         }
 
@@ -413,9 +456,8 @@ sealed class GameUpdater
                     {
                         if (updateResult.success)
                         {
-                            // I still can't figure what the "fastVerify" field implies or meaning.
                             jsonwriter.WriteStartObject();
-                            jsonwriter.WriteNumber("cRC", pakInfo.cRC);
+                            jsonwriter.WriteString("hash", pakInfo.hash);
                             jsonwriter.WriteString("name", pakInfo.name);
                             jsonwriter.WriteNumber("fastVerify", updateResult.fileLastWriteTimeInUnixSeconds);
                             jsonwriter.WriteNumber("sizeInBytes", pakInfo.sizeInBytes);

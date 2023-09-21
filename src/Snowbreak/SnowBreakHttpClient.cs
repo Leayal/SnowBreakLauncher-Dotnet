@@ -18,7 +18,8 @@ sealed class SnowBreakHttpClient : HttpClient
 
     static SnowBreakHttpClient()
     {
-        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/ob202307/PC/");
+        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC2/PC/updates/");
+        // https://snowbreak-dl.amazingseasuncdn.com/DLC2/PC/updates/manifest.json
         URL_GameClientManifest = new Uri(URL_GameClientPCData, "manifest.json");
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
         Instance = new SnowBreakHttpClient(new SocketsHttpHandler()
@@ -59,16 +60,24 @@ sealed class SnowBreakHttpClient : HttpClient
         }
     }
 
-    public Task<HttpResponseMessage> GetFileDownloadResponseAsync(in GameClientManifestData manifest, string filename, CancellationToken cancellationToken = default)
+    public Task<HttpResponseMessage> GetFileDownloadResponseFromFileHashAsync(in GameClientManifestData manifest, string fileHash, CancellationToken cancellationToken = default)
     {
-        if (filename.Length == 0) ArgumentException.ThrowIfNullOrWhiteSpace(filename, nameof(filename));
+        ArgumentException.ThrowIfNullOrWhiteSpace(fileHash);
 
-        var url = new Uri(URL_GameClientPCData, Path.Join(manifest.pathOffset, filename));
+        var url = new Uri(URL_GameClientPCData, Path.Join(manifest.pathOffset, fileHash));
         using (var req = new HttpRequestMessage(HttpMethod.Get, url))
         {
             req.Headers.Host = url.Host;
             return this.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         }  
+    }
+
+    public Task<HttpResponseMessage> GetFileDownloadResponseAsync(in GameClientManifestData manifest, in PakEntry entry, CancellationToken cancellationToken = default)
+    {
+        if (entry.Equals(PakEntry.Empty)) throw new ArgumentNullException(nameof(entry));
+        // ArgumentException.ThrowIfNullOrWhiteSpace(entry.hash, nameof(entry));
+
+        return this.GetFileDownloadResponseFromFileHashAsync(in manifest, entry.hash, cancellationToken);
     }
 
     public async Task<LauncherNewsHttpResponse> GetLauncherNewsAsync(CancellationToken cancellationToken = default)

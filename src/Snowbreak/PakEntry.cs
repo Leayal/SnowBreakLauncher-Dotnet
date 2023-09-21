@@ -6,6 +6,8 @@ namespace Leayal.SnowBreakLauncher.Snowbreak;
 
 public readonly struct PakEntry
 {
+    public static readonly PakEntry Empty = default;
+
     private readonly JsonElement element;
 
     public PakEntry(in JsonElement element)
@@ -13,8 +15,10 @@ public readonly struct PakEntry
         this.element = element;
     }
 
+    public readonly bool? bPrimary => this.GetNullableBoolean();
     public readonly long sizeInBytes => this.GetLongNumber();
-    public readonly uint cRC => this.GetUIntNumber();
+    /// <summary>Gets the MD5 hash of the file.</summary>
+    public readonly string hash => this.GetString();
     /// <summary>Unix time of file's modified date (expressed in seconds)</summary>
     /// <remarks>Use <seealso cref="DateTimeOffset.FromUnixTimeSeconds"/> to parse this number.</remarks>
     public readonly long? fastVerify => this.GetNullableNumber();
@@ -27,6 +31,17 @@ public readonly struct PakEntry
             return prop.GetUInt32();
         }
         return 0;
+    }
+
+    private readonly bool? GetNullableBoolean([CallerMemberName] string? name = null)
+    {
+        if (!this.element.TryGetProperty(name ?? string.Empty, out var prop)) return null;
+        return prop.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => null
+        };
     }
 
     private readonly long GetLongNumber([CallerMemberName] string? name = null)
