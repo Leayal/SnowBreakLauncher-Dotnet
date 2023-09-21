@@ -46,9 +46,12 @@ sealed class GameUpdater
         {
             if (MemoryExtensions.Equals(localManifest.version.AsSpan().Trim(), manifestData.version.AsSpan().Trim(), StringComparison.Ordinal))
             {
-                if (localManifest.PakCount != manifestData.PakCount) return true;
+                // As we deduplicated pak entries when writing manifest.json file after updating successfully.
+                // The PakCount will likely always be different from the remote manifest one.
+                // ONLY WHEN THE PUBLISHER FIXED THEIR MISTAKE TO NOT DUMPING DUPLICATE ENTRIES that this count comparing can be accurate.
+                // if (localManifest.PakCount != manifestData.PakCount) return true;
 
-                var localPaks = localManifest.GetPaks().ToFrozenDictionary(pak => pak.name, StringComparer.OrdinalIgnoreCase);
+                var localPaks = localManifest.GetPakDictionary();
                 var mgrFile = mgr.Files;
                 foreach (var pakInfo in manifestData.GetPaks())
                 {
@@ -102,22 +105,8 @@ sealed class GameUpdater
             task_getRemoteManifest = new ValueTask<GameClientManifestData>(httpClient.GetGameClientManifestAsync(cancellationToken));
         }
 
-        IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable;
-
-        if (localManifest.HasValue)
-        {
-            var dictionary = new Dictionary<string, PakEntry>(localManifest.Value.PakCount, StringComparer.OrdinalIgnoreCase);
-            foreach (var pakEntry in localManifest.Value.GetPaks())
-            {
-                // dictionary.TryAdd(pakEntry.name, pakEntry);
-                dictionary[pakEntry.name] = pakEntry;
-            }
-            bufferedLocalFileTable = FrozenDictionary.ToFrozenDictionary(dictionary, StringComparer.OrdinalIgnoreCase);
-        }
-        else
-        {
-            bufferedLocalFileTable = System.Collections.Immutable.ImmutableDictionary<string, PakEntry>.Empty;
-        }
+        IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable = localManifest.HasValue ?
+            localManifest.Value.GetPakDictionary() : System.Collections.Immutable.ImmutableDictionary<string, PakEntry>.Empty;
 
         var remoteManifest = await task_getRemoteManifest;
         var totalPak = remoteManifest.PakCount;
@@ -450,8 +439,11 @@ sealed class GameUpdater
 
                 jsonwriter.WriteStartArray("paks");
 
+                var outputedOnes = new HashSet<string>(remoteManifest.PakCount, StringComparer.OrdinalIgnoreCase);
                 foreach (var pakInfo in remoteManifest.GetPaks())
                 {
+                    if (!outputedOnes.Add(pakInfo.name)) continue;
+
                     if (finishedOnes.TryGetValue(pakInfo, out var updateResult))
                     {
                         if (updateResult.success)
@@ -478,6 +470,8 @@ sealed class GameUpdater
 
                 jsonwriter.WriteEndObject();
                 jsonwriter.Flush();
+                outputedOnes.Clear();
+                outputedOnes = null;
             }
 
             FileSystem.MoveOverwrite_AwareReadOnly(localPath_ManifestPopulating, localPath_Manifest);

@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
+using System.Formats.Tar;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -20,6 +22,34 @@ public readonly struct GameClientManifestData : IDisposable
     public readonly string? version => this.GetString();
 
     public readonly string? pathOffset => this.GetString();
+
+    public readonly IReadOnlyDictionary<string, PakEntry> GetPakDictionary()
+    {
+        var dictionary = new Dictionary<string, PakEntry>(this.PakCount, StringComparer.OrdinalIgnoreCase);
+        if (this._doc.RootElement.TryGetProperty("paks", out var prop) && prop.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var pak in prop.EnumerateArray())
+            {
+                var pakInfo = new PakEntry(in pak);
+                var key = pakInfo.name;
+                if (dictionary.TryGetValue(key, out var oldEntry))
+                {
+                    if (!string.IsNullOrEmpty(pakInfo.hash) && !string.Equals(oldEntry.hash, pakInfo.hash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (pakInfo.bPrimary == true || string.IsNullOrEmpty(oldEntry.hash))
+                        {
+                            dictionary[pakInfo.name] = pakInfo;
+                        }
+                    }
+                }
+                else
+                {
+                    dictionary.Add(pakInfo.name, pakInfo);
+                }
+            }
+        }
+        return FrozenDictionary.ToFrozenDictionary(dictionary, StringComparer.OrdinalIgnoreCase);
+    }
 
     public readonly IEnumerable<PakEntry> GetPaks()
     {
