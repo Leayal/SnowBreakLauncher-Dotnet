@@ -1,5 +1,5 @@
 # SnowBreakLauncher-Dotnet
- A custom launcher for [SnowBreak: Containment Zone](https://snowbreak.amazingseasun.com/), written in C# of .NET8.
+ A custom launcher for [SnowBreak: Containment Zone](https://snowbreak.amazingseasun.com/), written in C# of .NET7 (can target .NET8 to get its improvement).
  
 
 # Notes
