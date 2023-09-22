@@ -62,7 +62,11 @@ sealed class SnowBreakHttpClient : HttpClient
 
     public Task<HttpResponseMessage> GetFileDownloadResponseFromFileHashAsync(in GameClientManifestData manifest, string fileHash, CancellationToken cancellationToken = default)
     {
+#if NET8_0_OR_GREATER
         ArgumentException.ThrowIfNullOrWhiteSpace(fileHash);
+#else
+        if (string.IsNullOrWhiteSpace(fileHash)) throw new ArgumentException(null, nameof(fileHash));
+#endif
 
         var url = new Uri(URL_GameClientPCData, Path.Join(manifest.pathOffset, fileHash));
         using (var req = new HttpRequestMessage(HttpMethod.Get, url))

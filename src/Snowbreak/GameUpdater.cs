@@ -4,7 +4,6 @@ using Leayal.SnowBreakLauncher.Classes;
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;

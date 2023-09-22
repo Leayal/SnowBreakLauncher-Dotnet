@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers;
 using System.IO;
+using System.Runtime.CompilerServices;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -12,6 +13,19 @@ class GameDataManager
         this.manager = manager;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static void ReplaceAltDirectorySeparatorCharToDirectorySeparatorChar(in Span<char> buffer)
+    {
+#if NET8_0_OR_GREATER
+        buffer.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+#else
+        for (int i = 0; i < buffer.Length; i++)
+        {
+            if (buffer[i] == Path.AltDirectorySeparatorChar) buffer[i] = Path.DirectorySeparatorChar;
+        }
+#endif
+    }
+
     public string GetFullPath(ReadOnlySpan<char> relativePath)
     {
         if (relativePath.Contains(Path.AltDirectorySeparatorChar))
@@ -20,7 +34,8 @@ class GameDataManager
             {
                 Span<char> buffer = stackalloc char[relativePath.Length];
                 relativePath.CopyTo(buffer);
-                buffer.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                buffer = buffer.Slice(0, relativePath.Length);
+                ReplaceAltDirectorySeparatorCharToDirectorySeparatorChar(in buffer);
                 return Path.Join(this.manager.FullPathOfGameDirectory, buffer);
             }
             else
@@ -30,7 +45,8 @@ class GameDataManager
                 {
                     var buffer = new Span<char>(borrowed, 0, relativePath.Length);
                     relativePath.CopyTo(buffer);
-                    buffer.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+                    buffer = buffer.Slice(0, relativePath.Length);
+                    ReplaceAltDirectorySeparatorCharToDirectorySeparatorChar(in buffer);
                     return Path.Join(this.manager.FullPathOfGameDirectory, buffer);
                 }
                 finally

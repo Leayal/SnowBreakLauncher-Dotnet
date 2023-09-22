@@ -17,7 +17,11 @@ namespace Leayal.SnowBreakLauncher.Classes
             ArgumentNullException.ThrowIfNull(dataStream);
             if (!dataStream.CanRead) throw new ArgumentException(null, nameof(dataStream));
             int bufferLen = buffer.Length;
+#if NET8_0_OR_GREATER
             ArgumentOutOfRangeException.ThrowIfLessThan(bufferLen, 4096, nameof(buffer));
+#else
+            if (bufferLen < 4096) throw new ArgumentOutOfRangeException(nameof(buffer));
+#endif
             // ArgumentOutOfRangeException.ThrowIfGreaterThan(bufferLen, ushort.MaxValue, nameof(buffer));
             if (bufferLen > ushort.MaxValue) buffer = buffer.Slice(0, ushort.MaxValue);
             int read = dataStream.Read(buffer);

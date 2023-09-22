@@ -1,18 +1,16 @@
 ﻿using System;
-using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
-using System.Xml.Linq;
 
 namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
 {
     public class DNSCacheEntry
     {
         internal readonly DateTime ExpireTime;
-        public readonly FrozenSet<DNSAnswer> Answers;
+        public readonly IReadOnlyCollection<DNSAnswer> Answers;
 
-        public DNSCacheEntry(FrozenSet<DNSAnswer> answers)
+        public DNSCacheEntry(IReadOnlyCollection<DNSAnswer> answers)
         {
             if (answers.Count != 0)
                 this.ExpireTime = DateTime.Now + new TimeSpan(0, 0, answers.Min(a => a.TTL));

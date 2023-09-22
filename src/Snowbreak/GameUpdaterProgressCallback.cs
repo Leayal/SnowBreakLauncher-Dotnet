@@ -61,8 +61,12 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
 
         public int GetPercentile(int targetTotalPercentile = 0)
         {
+#if NET8_0_OR_GREATER
             ArgumentOutOfRangeException.ThrowIfLessThan(targetTotalPercentile, 0);
             ArgumentOutOfRangeException.ThrowIfGreaterThan(targetTotalPercentile, 100);
+#else
+            if (targetTotalPercentile < 0 || targetTotalPercentile > 100) throw new ArgumentOutOfRangeException();
+#endif
             var currentProg = this.CurrentProgress * 100d;
             var percent = currentProg / this.TotalProgress;
             if (targetTotalPercentile > 0)

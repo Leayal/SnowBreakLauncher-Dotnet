@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Concurrent;
+#if NET8_0_OR_GREATER
 using System.Collections.Frozen;
+#endif
 using System.Collections.Generic;
 using System.Net.Http;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
@@ -22,7 +25,7 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
         private readonly HttpClient _client;
         private readonly ConcurrentDictionary<DNSQueryParameters, DNSCacheEntry> _answersCache = new ConcurrentDictionary<DNSQueryParameters, DNSCacheEntry>();
 
-        private static readonly FrozenDictionary<int, string> DNSCodes = new Dictionary<int, string>
+        private static readonly IReadOnlyDictionary<int, string> DNSCodes = new Dictionary<int, string>
         {
             { 1, "Format Error"},
             { 2, "Server Failure"},
@@ -42,7 +45,12 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
             { 21, "Algorithm not supported" },
             { 22, "Bad Truncation" },
             { 23, "Bad/missing Server Cookie" }
-        }.ToFrozenDictionary(); // As of .NET8 preview 7, Frozen Dictionary implies OptimizedReading, no longer OptimizedCreating.
+        }
+        // As of .NET8 preview 7, Frozen Dictionary implies OptimizedReading, no longer OptimizedCreating.
+#if NET8_0_OR_GREATER
+        .ToFrozenDictionary()
+#endif
+        ;
 
         private string[] _endpointList = 
         {
@@ -107,7 +115,7 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
             throw new DNSLookupException("Unable to perform DNS lookup due to lookup errors", storedExceptions);
         }
 
-        private async Task<FrozenSet<DNSAnswer>?> SingleLookup(string name, ResourceRecordType recordType, string serverURI, CancellationToken cancellationToken)
+        private async Task<IReadOnlyCollection<DNSAnswer>?> SingleLookup(string name, ResourceRecordType recordType, string serverURI, CancellationToken cancellationToken)
         {
             string uri = GenerateQuery(name, serverURI, recordType);
 
@@ -156,7 +164,7 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
             return null;
         }
 
-        private static FrozenSet<DNSAnswer>? HandleJSONResponse(string content, bool requireVerified)
+        private static IReadOnlyCollection<DNSAnswer>? HandleJSONResponse(string content, bool requireVerified)
         {
             JsonDocument json;
             try
@@ -195,7 +203,11 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
                         list.Add(new DNSAnswer(in item));
                     }
                 }
+#if NET8_0_OR_GREATER
                 return list.ToFrozenSet();
+#else
+                return list;
+#endif
             }
             else
             {
@@ -240,7 +252,63 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void GeneratePadding(in Span<char> bufferToWrite) => Random.Shared.GetItems("abcddefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ012456789-._~".AsSpan(), bufferToWrite);
+        private static void GeneratePadding(in Span<char> bufferToWrite)
+        {
+            var sample = "abcddefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ012456789-._~".AsSpan();
+#if NET8_0_OR_GREATER
+            return Random.Shared.GetItems(sample, bufferToWrite);
+#else
+            GetItems(Random.Shared, sample, bufferToWrite);
+#endif
+        }
+
+#if !NET8_0_OR_GREATER
+        /// <remarks>https://github.com/dotnet/runtime/blob/29a2ad14eeb25304dd0938eb60939fa83786408e/src/libraries/System.Private.CoreLib/src/System/Random.cs#L193</remarks>
+        private static void GetItems<T>(Random random, ReadOnlySpan<T> choices, Span<T> destination)
+        {
+            if (choices.IsEmpty)
+            {
+                throw new ArgumentException(null, nameof(choices));
+            }
+
+            // The most expensive part of this operation is the call to get random data. We can
+            // do so potentially many fewer times if:
+            // - the number of choices is <= 256. This let's us get a single byte per choice.
+            // - the number of choices is a power of two. This let's us use a byte and simply mask off
+            //   unnecessary bits cheaply rather than needing to use rejection sampling.
+            // In such a case, we can grab a bunch of random bytes in one call.
+            if (BitOperations.IsPow2(choices.Length) && choices.Length <= 256)
+            {
+                Span<byte> randomBytes = stackalloc byte[512]; // arbitrary size, a balance between stack consumed and number of random calls required
+                while (!destination.IsEmpty)
+                {
+                    if (destination.Length < randomBytes.Length)
+                    {
+                        randomBytes = randomBytes.Slice(0, destination.Length);
+                    }
+
+                    random.NextBytes(randomBytes);
+
+                    int mask = choices.Length - 1;
+                    for (int i = 0; i < randomBytes.Length; i++)
+                    {
+                        destination[i] = choices[randomBytes[i] & mask];
+                    }
+
+                    destination = destination.Slice(randomBytes.Length);
+                }
+
+                return;
+            }
+
+            // Simple fallback: get each item individually, generating a new random Int32 for each
+            // item. This is slower than the above, but it works for all types and sizes of choices.
+            for (int i = 0; i < destination.Length; i++)
+            {
+                destination[i] = choices[random.Next(choices.Length)];
+            }
+        }
+#endif
 
         public void Dispose()
         {

@@ -1,7 +1,9 @@
 ﻿using System;
+#if NET8_0_OR_GREATER
 using System.Collections.Frozen;
+#endif
 using System.Collections.Generic;
-using System.Formats.Tar;
+using System.Collections.ObjectModel;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 
@@ -48,7 +50,11 @@ public readonly struct GameClientManifestData : IDisposable
                 }
             }
         }
+#if NET8_0_OR_GREATER
         return FrozenDictionary.ToFrozenDictionary(dictionary, StringComparer.OrdinalIgnoreCase);
+#else
+        return dictionary.AsReadOnly();
+#endif
     }
 
     public readonly IEnumerable<PakEntry> GetPaks()
