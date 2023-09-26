@@ -43,11 +43,6 @@ class Program
     public static AppBuilder? BuildAvaloniaApp(InstanceController processInstance)
     {
         var builder = AppBuilder.Configure<App>(() => new App(processInstance))
-            .With(new Win32PlatformOptions()
-            {
-                CompositionMode = new Win32CompositionMode[] { Win32CompositionMode.WinUIComposition /* (Win32CompositionMode)2 This is DirectComposition, a meaningless value, deprecated by WinUIComposition */, Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.RedirectionSurface },
-                RenderingMode = new Win32RenderingMode[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Wgl, Win32RenderingMode.Software },
-            })
             .UsePlatformDetect()
             .WithInterFont();
 
@@ -121,10 +116,7 @@ class Program
                         }
                         if (!mainWindow.IsActive)
                         {
-                            if (!Leayal.Shared.Windows.UnmanagedWindowsHelper.SetForegroundWindow(mainWindow))
-                            {
-                                mainWindow.Activate();
-                            }
+                            mainWindow.Activate();
                         }
                     }
                 }

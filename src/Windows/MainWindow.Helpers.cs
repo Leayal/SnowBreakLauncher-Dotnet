@@ -9,6 +9,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using MsBox.Avalonia;
 using Windows.Win32;
+using System.Runtime.InteropServices;
 using MsBox.Avalonia.Enums;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -54,12 +55,15 @@ namespace Leayal.SnowBreakLauncher.Windows
         {
             if (sizeToContent == SizeToContent.Manual)
             {
-                int screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
-                    screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
-                msgboxparams.MinWidth = 300;
-                msgboxparams.MinHeight = 200;
-                msgboxparams.Width = screenWidth / 2;
-                msgboxparams.Height = screenHeight / 2;
+            int screenWidth = 1920, screenHeight = 1080;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);                    
+                screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+            }
+            msgboxparams.MinWidth = 300;
+            msgboxparams.MinHeight = 200;
+            msgboxparams.Width = screenWidth / 2;
+            msgboxparams.Height = screenHeight / 2;
             }
             else
             {
@@ -71,9 +75,12 @@ namespace Leayal.SnowBreakLauncher.Windows
         {
             ArgumentNullException.ThrowIfNull(ex);
 
-            int screenWidth= PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
-                screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN),
-                width = screenWidth / 2,
+            int screenWidth = 1920, screenHeight = 1080;
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) {
+                screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
+                screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+            }
+            int width = screenWidth / 2,
                 height = screenHeight / 2;
 
             return MessageBoxManager.GetMessageBoxStandard(new MsBox.Avalonia.Dto.MessageBoxStandardParams()

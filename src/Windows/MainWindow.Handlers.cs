@@ -13,10 +13,10 @@ using Leayal.SnowBreakLauncher.Controls;
 using Avalonia.Threading;
 using Avalonia.Controls;
 using System.Threading;
+using System.Diagnostics;
 using Avalonia.Platform.Storage;
 using System.IO;
 using Avalonia;
-using Leayal.Shared.Windows;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
@@ -82,7 +82,12 @@ namespace Leayal.SnowBreakLauncher.Windows
             {
                 try
                 {
-                    Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
+                    var ps = new ProcessStartInfo(obj.link)
+                    { 
+                        UseShellExecute = true, 
+                        Verb = "open"
+                    };
+                    Process.Start(ps);
                 }
                 catch { }
             }
@@ -203,7 +208,12 @@ namespace Leayal.SnowBreakLauncher.Windows
                 await this.ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction();
                 return;
             }
-            WindowsExplorerHelper.SelectPathInExplorer(new string(gameMgr.FullPathOfGameDirectory));
+            var ps = new ProcessStartInfo(new string(gameMgr.FullPathOfGameDirectory))
+            { 
+                UseShellExecute = true, 
+                Verb = "open"
+            };
+            Process.Start(ps);
         }
 
         public async void MenuItem_ChangeGameClientDirectory_Click(object source, RoutedEventArgs args)

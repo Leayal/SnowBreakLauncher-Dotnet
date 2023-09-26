@@ -1,5 +1,5 @@
 ﻿using DamienG.Security.Cryptography;
-using Leayal.Shared.Windows;
+using Leayal.Shared.FileSystem;
 using Leayal.SnowBreakLauncher.Classes;
 using System;
 using System.Buffers;
@@ -75,7 +75,7 @@ sealed class GameUpdater
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     static bool IsFastVerifyMatched(string file, long? fastVerifyValue)
     {
-        if (!FileSystem.PathExists(file)) return false;
+        if (!File.Exists(file)) return false;
         return IsFastVerifyMatchedUnsafe(file, fastVerifyValue);
     }
 
@@ -144,7 +144,7 @@ sealed class GameUpdater
                         }
 
                         var path_localPak = mgr.Files.GetFullPath(pak.name);
-                        if (FileSystem.PathExists(path_localPak))
+                        if (File.Exists(path_localPak))
                         {
                             if (!skipCrcTableCache && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
                             {
