@@ -43,11 +43,13 @@ class Program
     public static AppBuilder? BuildAvaloniaApp(InstanceController processInstance)
     {
         var builder = AppBuilder.Configure<App>(() => new App(processInstance))
+#if WINDOWS
             .With(new Win32PlatformOptions()
             {
                 CompositionMode = new Win32CompositionMode[] { Win32CompositionMode.WinUIComposition /* (Win32CompositionMode)2 This is DirectComposition, a meaningless value, deprecated by WinUIComposition */, Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.RedirectionSurface },
                 RenderingMode = new Win32RenderingMode[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Wgl, Win32RenderingMode.Software },
             })
+#endif
             .UsePlatformDetect()
             .WithInterFont();
 

@@ -453,10 +453,8 @@ namespace Leayal.Shared.Windows
         public static unsafe DateTime ToDateTime(this System.Runtime.InteropServices.ComTypes.FILETIME time)
             => DateTime.FromFileTime(Unsafe.Read<long>(&time));
 
-        /// <summary>Check if the given path is actually existed on the filesystem.</summary>
-        /// <param name="path">The path to check existence.</param>
-        /// <returns><see langword="true"/> if the path is existed. Otherwise, <see langword="false"/>.</returns>
-        public static bool PathExists(string path)
+        private static bool PathExists_Windows(string path)
+
         {
             if (string.IsNullOrEmpty(path)) return false;
 
@@ -487,6 +485,14 @@ namespace Leayal.Shared.Windows
             }
             return isSuccess;
         }
+
+        private readonly static Func<string, bool> Invocation_PathExists = OperatingSystem.IsWindows() ? PathExists_Windows : File.Exists;
+
+        /// <summary>Check if the given path is actually existed on the filesystem.</summary>
+        /// <param name="path">The path to check existence.</param>
+        /// <returns><see langword="true"/> if the path is existed. Otherwise, <see langword="false"/>.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool PathExists(string path) => Invocation_PathExists(path);
 
         /// <summary>Check if the given path is actually existed on the filesystem.</summary>
         /// <param name="path">The path to check existence.</param>

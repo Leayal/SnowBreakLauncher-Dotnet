@@ -13,6 +13,7 @@ using MsBox.Avalonia.Enums;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Leayal.SnowBreakLauncher.Snowbreak;
+using Avalonia.Platform;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
@@ -50,16 +51,30 @@ namespace Leayal.SnowBreakLauncher.Windows
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void AdjustManualSize(MsBox.Avalonia.Dto.MessageBoxStandardParams msgboxparams, SizeToContent sizeToContent)
+        private void AdjustManualSize(MsBox.Avalonia.Dto.MessageBoxStandardParams msgboxparams, SizeToContent sizeToContent)
         {
             if (sizeToContent == SizeToContent.Manual)
             {
-                int screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
+                int screenWidth = 0, screenHeight = 0;
+                if (OperatingSystem.IsWindows())
+                {
+                    screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
                     screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+                }
+                else if (Screens.ScreenFromVisual(this) is Screen screenArea)
+                {
+                    screenWidth = screenArea.WorkingArea.Width;
+                    screenHeight = screenArea.WorkingArea.Width;
+                }
+
                 msgboxparams.MinWidth = 300;
                 msgboxparams.MinHeight = 200;
-                msgboxparams.Width = screenWidth / 2;
-                msgboxparams.Height = screenHeight / 2;
+
+                if (screenWidth != 0 && screenHeight != 0)
+                {
+                    msgboxparams.Width = screenWidth / 2;
+                    msgboxparams.Height = screenHeight / 2;
+                }
             }
             else
             {

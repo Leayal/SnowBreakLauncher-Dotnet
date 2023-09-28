@@ -7,6 +7,7 @@ using System.Management;
 using Leayal.Shared.Windows;
 using System.Diagnostics;
 using System.Threading;
+using System.Globalization;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -76,10 +77,45 @@ sealed class GameProcessManager : IDisposable
     {
         Process? result = null;
         var targetProcessPath = this.manager.GameExecutablePath;
+
+        static bool IsTargetedProcess(Process proc, string targetProcessPath)
+        {
+#if WINDOWS
+            var procPath = proc.QueryFullProcessImageName(uacHint: true);
+            return string.Equals(procPath, targetProcessPath, StringComparison.OrdinalIgnoreCase);
+#else
+            static ReadOnlySpan<char> GetProcessInfo(Process proc, string infoName)
+            {
+                using (var readLinkProc = new Process())
+                {
+                    readLinkProc.StartInfo.FileName = "readlink";
+                    readLinkProc.StartInfo.UseShellExecute = false;
+                    readLinkProc.StartInfo.RedirectStandardOutput = true;
+                    readLinkProc.StartInfo.ArgumentList.Add("-f");
+                    // "infoName" should be "exe" or "cmdline"
+                    readLinkProc.StartInfo.ArgumentList.Add($"/proc/{proc.Id.ToString(NumberFormatInfo.InvariantInfo)}/{infoName}");
+                    readLinkProc.Start();
+                    readLinkProc.WaitForExit();
+                    var fullpath = readLinkProc.StandardOutput.ReadToEnd();
+                    if (string.IsNullOrWhiteSpace(fullpath)) return ReadOnlySpan<char>.Empty;
+                    var span = fullpath.AsSpan().Trim();
+                    return span;
+                }
+            }
+            // "readlink -f /proc/<pid>/exe" is quite useless, as we're searching for Wine, but we only get a "wine" instance without knowing what is running inside the wine.
+            // We use "readlink -f /proc/<pid>/cmdline" instead.
+            var span = GetProcessInfo(proc, "exe");
+            if (span.IsEmpty) return false;
+            if (!MemoryExtensions.Equals(span, "wine", StringComparison.Ordinal) && MemoryExtensions.EndsWith(span, "/wine", StringComparison.Ordinal)) return false;
+
+            span = GetProcessInfo(proc, "cmdline");
+            return MemoryExtensions.Contains(span, targetProcessPath, StringComparison.OrdinalIgnoreCase);
+#endif
+        }
+
         foreach (var proc in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(targetProcessPath)))
         {
-            var procPath = proc.QueryFullProcessImageName(uacHint: true);
-            if (string.Equals(procPath, targetProcessPath, StringComparison.OrdinalIgnoreCase))
+            if (IsTargetedProcess(proc, targetProcessPath))
             {
                 result = proc;
             }
@@ -127,7 +163,14 @@ sealed class GameProcessManager : IDisposable
         {
             ArgumentNullException.ThrowIfNull(tickingCallback);
             this.callback = tickingCallback;
-            this.timer = new PeriodicTimer(TimeSpan.FromMilliseconds(500));
+            const int pollingMs =
+#if WINDOWS
+                500 // 0.5s on Windows
+#else
+                1000 // 1s on non-Windows
+#endif
+                ;
+            this.timer = new PeriodicTimer(TimeSpan.FromMilliseconds(pollingMs));
         }
 
         public void Start()
@@ -315,14 +358,27 @@ sealed class GameProcessManager : IDisposable
         try
         {
             proc = new Process();
-            proc.StartInfo.FileName = executablePath;
+            var argList = proc.StartInfo.ArgumentList;
+            if (OperatingSystem.IsWindows())
+            {
+                proc.StartInfo.FileName = executablePath;
+                // Launch the game as Admin, otherwise its anti-cheat will not work and the game will be either flagged as malicious client or not starting at all.
+                proc.StartInfo.UseShellExecute = true;
+                // "runas" verb on Windows tells OS's UAC to ask for Admin when starting the process. Or simply grant it Admin access if UAC is turned off.
+                proc.StartInfo.Verb = "runas";
+            }
+            else
+            {
+                proc.StartInfo.FileName = "wine";
+                // I heard that Wine run Windows processes as Admin by default?
+                // Unverified, need help.
+                proc.StartInfo.UseShellExecute = true;
+
+                argList.Add("start");
+                argList.Add(executablePath);
+            }
             proc.StartInfo.WorkingDirectory = Path.GetDirectoryName(proc.StartInfo.FileName) ?? string.Empty;
 
-            // Launch the game as Admin, otherwise its anti-cheat will not work and the game will be either flagged as malicious client or not starting at all.
-            proc.StartInfo.UseShellExecute = true;
-            proc.StartInfo.Verb = "runas";
-
-            var argList = proc.StartInfo.ArgumentList;
             argList.Add("-FeatureLevelES31");
             argList.Add("-ChannelID=seasun");
 

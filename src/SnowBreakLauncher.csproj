@@ -2,6 +2,12 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net7.0-windows</TargetFramework>
+	<!--
+	You can switch between:
+	- Non-windows or Linux: "net7.0"
+	- Windows: "net7.0-windows"
+	You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0", or "net7.0-windows" to "net8.0-windows"
+	-->
     <Nullable>enable</Nullable>
 	<ImplicitUsings>disable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>

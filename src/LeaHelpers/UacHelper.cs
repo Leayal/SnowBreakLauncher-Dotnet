@@ -10,7 +10,7 @@ using PInvoke = global::Windows.Win32.PInvoke;
 
 namespace Leayal.Shared.Windows
 {
-    /// <summary>A helper class providing convenient methods to read User Account Control (UAC)'s settings.</summary>
+    /// <summary>A helper class providing convenient methods to read User Account Control (UAC)'s settings of Windows.</summary>
     public static class UacHelper
     {
         private const string uacRegistryKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";
