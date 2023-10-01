@@ -16,18 +16,18 @@
     - **Or** deploy the SDK binaries into `sdk` directory. The directory is at the project's root, if the directory doesn't exist, you can create it. [(Check the batch script for insight)](build-rel-win-standalone.bat#L10)
 - After installing the SDK, you can compile by running one of the build script files (if you're building it for personal use, I recommend building dependent one):
   - [build-rel-win-standalone.bat](build-rel-win-standalone.bat) file: For 64-bit Windows OSs, the binaries will be portably standalone and requires no dependencies to run.
-  - [build-rel-win-dependent.bat](build-rel-win-dependent.bat.sh) file: For 64-bit Windows OSs, the binaries will be portable but requiring `.NET Desktop Runtime` installed on the user's system to run.
+  - [build-rel-win-dependent.bat](build-rel-win-dependent.bat.sh) file: For 64-bit Windows OSs, the binaries will be portable but requiring `.NET Runtime` installed on the user's system to run.
   - [crossbuild-rel-linux-standalone.bat](crossbuild-rel-linux-standalone.bat) file: For 64-bit Windows OSs, the binaries will be portably standalone **which is for running on Linux OSs**. In the nutshell, this is `Building it on Windows, running it on Linux`.
-  - [crossbuild-rel-linux-dependant.bat](crossbuild-rel-linux-dependant.bat) file: For 64-bit Windows OSs, the binaries will be portable but requiring `.NET Desktop Runtime` installed on the user's system to run.
+  - [crossbuild-rel-linux-dependant.bat](crossbuild-rel-linux-dependant.bat) file: For 64-bit Windows OSs, the binaries will be portable but requiring `.NET Runtime` installed on the user's system to run.
   - [build-rel-linux-standalone.sh](build-rel-linux-standalone.sh) file: For 64-bit Linux OSs, the binaries will be portably standalone and requires no dependencies to run. This is recommended if you are to distribute your binaries to other users.
-  - [build-rel-linux-dependent.sh](build-rel-linux-dependent.sh) file: For 64-bit Linux OSs, the binaries will be portable but requiring `.NET Desktop Runtime` installed on the user's system to run.
+  - [build-rel-linux-dependent.sh](build-rel-linux-dependent.sh) file: For 64-bit Linux OSs, the binaries will be portable but requiring `.NET Runtime` installed on the user's system to run.
 - After the build is completed successfully, all the compiled binaries can be found in `release` directory.
 
 ### Why are there multiple build script files:
 - Scripts with `standalone` in the name was meant to build binaries which you can give to others.
 - Scripts with `build` was meant to implies the script "should" produce the same kernel-targeting binaries as the OS invoked the script. `Crossbuild` means the opposite, produce different kernel-targeting binaries from the OS invoked the script.
 - Scripts with `rel` means building `release` binaries (meant to be distributed). `rel-<OS>` means release to be run on the target OS, for instance, `rel-linux` means binaries are for running on Linux-based OSs.
-### The .NET SDK includes all runtimes so you don't need to install .NET Desktop Runtime if you already have the SDK installed.
+### The .NET SDK includes all runtimes so you don't need to install .NET Runtime if you already have the SDK installed.
 
 ### The source is also taking some .NET8's improvement in, in case you're targeting .NET8. To build with .NET8 base:
 - You can install or deploy [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (the same like steps above)
