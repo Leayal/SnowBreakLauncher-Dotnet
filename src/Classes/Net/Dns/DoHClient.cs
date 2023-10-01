@@ -256,7 +256,7 @@ namespace Leayal.SnowBreakLauncher.Classes.Net.Dns
         {
             var sample = "abcddefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVXYZ012456789-._~".AsSpan();
 #if NET8_0_OR_GREATER
-            return Random.Shared.GetItems(sample, bufferToWrite);
+            Random.Shared.GetItems(sample, bufferToWrite);
 #else
             GetItems(Random.Shared, sample, bufferToWrite);
 #endif

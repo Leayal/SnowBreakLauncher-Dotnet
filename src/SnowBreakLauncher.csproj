@@ -1,13 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0</TargetFramework>
-    <!--
-    You can switch between:
-    - Non-windows or Linux: "net7.0"
-    - Windows: "net7.0-windows"
-    You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0", or "net7.0-windows" to "net8.0-windows"
-    -->
+    <TargetFrameworks>net7.0;net7.0-windows;net8.0;net8.0-windows</TargetFrameworks>
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
@@ -18,6 +12,7 @@
     <Authors>Dramiel Leayal</Authors>
     <Company>Dramiel Leayal</Company>
     <DefineTrace>false</DefineTrace>
+	<!--This property is only meaningful for Linux, Windows SDK strip symbol away from binary by default-->
     <StripSymbols>true</StripSymbols>
     <!--
         Additional constants are: 
@@ -47,7 +42,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.18-beta">
+    <!--CsWin32 v0.3.46-beta still does not generate compatible code with .NET 8 SDK v1.0.0-rc1-->
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.46-beta">
      <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Condition="!$(DefineConstants.Contains('NO_WMI'))" Include="System.Management" Version="7.0.2" />

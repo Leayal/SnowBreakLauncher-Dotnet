@@ -129,7 +129,7 @@ sealed class GameUpdater
             using (var incrementalMD5 = IncrementalHash.CreateHash(HashAlgorithmName.MD5))
             {
                 var borrowed = ArrayPool<byte>.Shared.Rent(1024 * 32);
-                var checkedFile = new HashSet<string>(totalPak, StringComparer.OrdinalIgnoreCase);
+                var checkedFile = new HashSet<string>(totalPak, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                 try
                 {
                     foreach (var pak in remoteManifest.GetPaks())
@@ -438,7 +438,7 @@ sealed class GameUpdater
 
                 jsonwriter.WriteStartArray("paks");
 
-                var outputedOnes = new HashSet<string>(remoteManifest.PakCount, StringComparer.OrdinalIgnoreCase);
+                var outputedOnes = new HashSet<string>(remoteManifest.PakCount, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
                 foreach (var pakInfo in remoteManifest.GetPaks())
                 {
                     if (!outputedOnes.Add(pakInfo.name)) continue;

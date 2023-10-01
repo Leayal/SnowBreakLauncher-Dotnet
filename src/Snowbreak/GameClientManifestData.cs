@@ -27,7 +27,7 @@ public readonly struct GameClientManifestData : IDisposable
 
     public readonly IReadOnlyDictionary<string, PakEntry> GetPakDictionary()
     {
-        var dictionary = new Dictionary<string, PakEntry>(this.PakCount, StringComparer.OrdinalIgnoreCase);
+        var dictionary = new Dictionary<string, PakEntry>(this.PakCount, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         if (this._doc.RootElement.TryGetProperty("paks", out var prop) && prop.ValueKind == JsonValueKind.Array)
         {
             foreach (var pak in prop.EnumerateArray())
@@ -51,7 +51,7 @@ public readonly struct GameClientManifestData : IDisposable
             }
         }
 #if NET8_0_OR_GREATER
-        return FrozenDictionary.ToFrozenDictionary(dictionary, StringComparer.OrdinalIgnoreCase);
+        return FrozenDictionary.ToFrozenDictionary(dictionary, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 #else
         return dictionary.AsReadOnly();
 #endif

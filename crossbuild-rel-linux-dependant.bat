@@ -18,6 +18,6 @@ REM - Non-windows or Linux: "net7.0" or "net8.0"
 REM You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0" value of the "-f" argument
 
 REM As of writing this script, select .NET7 because CsWin32 doesn't generate compatible code with .NET8 SDK v1.0.0-rc1
-dotnet.exe publish -r linux-x64 -f net7.0 --self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -o "release\linux\standalone" "src\SnowBreakLauncher.csproj" 
+dotnet.exe publish -r linux-x64 -f net7.0 --no-self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -o "release\linux\dependent" "src\SnowBreakLauncher.csproj" 
 
 ENDLOCAL
