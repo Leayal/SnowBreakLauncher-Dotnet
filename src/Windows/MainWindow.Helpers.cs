@@ -86,12 +86,7 @@ namespace Leayal.SnowBreakLauncher.Windows
         {
             ArgumentNullException.ThrowIfNull(ex);
 
-            int screenWidth= PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN),
-                screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN),
-                width = screenWidth / 2,
-                height = screenHeight / 2;
-
-            return MessageBoxManager.GetMessageBoxStandard(new MsBox.Avalonia.Dto.MessageBoxStandardParams()
+            var msgBoxParams = new MsBox.Avalonia.Dto.MessageBoxStandardParams()
             {
                 ButtonDefinitions = ButtonEnum.Ok,
                 CanResize = false,
@@ -105,11 +100,13 @@ namespace Leayal.SnowBreakLauncher.Windows
                 ShowInCenter = true,
                 MinWidth = 300,
                 MinHeight = 200,
-                Width = width,
-                Height = height,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 SystemDecorations = SystemDecorations.Full
-            }).ShowWindowDialogAsync(this);
+            };
+
+            AdjustManualSize(msgBoxParams, msgBoxParams.SizeToContent);
+
+            return MessageBoxManager.GetMessageBoxStandard(msgBoxParams).ShowWindowDialogAsync(this);
         }
 
         private Task ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction()

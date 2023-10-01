@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
 using System.Security.Principal;
 using MSWin32 = global::Windows.Win32;
 using PInvoke = global::Windows.Win32.PInvoke;
@@ -11,6 +12,7 @@ using PInvoke = global::Windows.Win32.PInvoke;
 namespace Leayal.Shared.Windows
 {
     /// <summary>A helper class providing convenient methods to read User Account Control (UAC)'s settings of Windows.</summary>
+    [SupportedOSPlatform("windows")]
     public static class UacHelper
     {
         private const string uacRegistryKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";

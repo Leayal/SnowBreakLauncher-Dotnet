@@ -6,11 +6,12 @@ using MSWin32 = global::Windows.Win32;
 using PInvoke = global::Windows.Win32.PInvoke;
 using System.Runtime.CompilerServices;
 using System.Threading;
+using System.Runtime.Versioning;
 
-#nullable enable
 namespace Leayal.Shared.Windows
 {
     /// <summary>A class provides quick and convenience method that .NET6 APIs doesn't really provide (yet?).</summary>
+    [SupportedOSPlatform("windows")]
     public static class ProcessInfoHelper
     {
         internal static readonly SafeProcessHandle InvalidHandle = new SafeProcessHandle();
@@ -232,4 +233,3 @@ namespace Leayal.Shared.Windows
         }
     }
 }
-#nullable restore

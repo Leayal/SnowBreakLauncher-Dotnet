@@ -1,0 +1,17 @@
+#!/bin/bash
+
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+
+cd "$SCRIPT_DIR"
+
+DOTNET_CLI_LOCAL="$SCRIPT_DIR""/sdk/dotnet"
+DOTNET_CLI="dotnet"
+if test -f $DOTNET_CLI_LOCAL;
+then
+    DOTNET_CLI="$DOTNET_CLI_LOCAL"
+fi
+
+export DOTNET_CLI_TELEMETRY_OPTOUT="1"
+export MSBUILDDISABLENODEREUSE="1"
+
+"$DOTNET_CLI" publish -r linux-x64 --no-self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -o "$SCRIPT_DIR""/release/linux" "$SCRIPT_DIR""/src/SnowBreakLauncher.csproj" 

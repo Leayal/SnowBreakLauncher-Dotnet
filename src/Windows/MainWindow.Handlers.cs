@@ -83,16 +83,19 @@ namespace Leayal.SnowBreakLauncher.Windows
             {
                 try
                 {
-#if WINDOWS
-                    // We really need this on Windows to avoid starting a new web browser process as Admin, in case this launcher is run as Admin.
-                    Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
-#else
-                    Process.Start(new ProcessStartInfo(obj.link)
+                    if (OperatingSystem.IsWindows())
                     {
-                        UseShellExecute = true,
-                        Verb = "open"
-                    })?.Dispose();
-#endif
+                        // We really need this on Windows to avoid starting a new web browser process as Admin, in case this launcher is run as Admin.
+                        Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
+                    }
+                    else
+                    {
+                        Process.Start(new ProcessStartInfo(obj.link)
+                        {
+                            UseShellExecute = true,
+                            Verb = "open"
+                        })?.Dispose();
+                    }
                 }
                 catch { }
             }
@@ -215,16 +218,19 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
             var browsingDir = new string(gameMgr.FullPathOfGameDirectory);
 
-#if WINDOWS
-            // We really need this on Windows to avoid starting a new web browser process as Admin, in case this launcher is run as Admin.
-            WindowsExplorerHelper.SelectPathInExplorer(browsingDir);
-#else
-            Process.Start(new ProcessStartInfo(browsingDir)
+            if (OperatingSystem.IsWindows())
             {
-                UseShellExecute = true,
-                Verb = "open"
-            })?.Dispose();
-#endif
+                // We really need this on Windows to avoid opening a new File Explorer process as Admin, in case this launcher is run as Admin.
+                WindowsExplorerHelper.SelectPathInExplorer(browsingDir);
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo(browsingDir)
+                {
+                    UseShellExecute = true,
+                    Verb = "open"
+                })?.Dispose();
+            }
         }
 
         public async void MenuItem_ChangeGameClientDirectory_Click(object source, RoutedEventArgs args)
@@ -380,7 +386,14 @@ namespace Leayal.SnowBreakLauncher.Windows
                             var processMgr = gameMgr.Process;
                             if (processMgr.IsGameRunning)
                             {
-                                this.GameStartButtonState = GameStartButtonState.WaitingForGameExit;
+                                if (OperatingSystem.IsWindows())
+                                {
+                                    this.GameStartButtonState = GameStartButtonState.WaitingForGameExit;
+                                }
+                                else
+                                {
+                                    await ShowInfoMsgBox("The game is already running", "Game already running");
+                                }
                             }
                             else
                             {

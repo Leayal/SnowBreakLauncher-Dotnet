@@ -13,6 +13,6 @@ IF EXIST "%~dp0\sdk" (
  SET "PATH=%DOTNET_ROOT%;%PATH%"
 )
 
-dotnet.exe publish -c Release -o "release" "src\SnowBreakLauncher.csproj" 
+dotnet.exe publish -r linux-x64 --self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -o "release\linux" "src\SnowBreakLauncher.csproj" 
 
 ENDLOCAL

@@ -1,5 +1,6 @@
 ﻿using Avalonia.Controls;
 using System;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using MSWin32 = global::Windows.Win32;
 using PInvoke = global::Windows.Win32.PInvoke;
@@ -18,17 +19,17 @@ namespace Leayal.Shared.Windows
         /// <remarks>
         /// <para><see href="https://docs.microsoft.com/windows/win32/api//winuser/nf-winuser-setforegroundwindow">Learn more about this API from docs.microsoft.com</see>.</para>
         /// </remarks>
+        /// 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool SetForegroundWindow(Window window) => SetForegroundWindowImpl(window);
 
-#if WINDOWS
-        public static bool SetForegroundWindow(Window window)
+        private static readonly Func<Window, bool> SetForegroundWindowImpl = OperatingSystem.IsWindows() ? new Func<Window, bool>(window =>
         {
             var platformHandle = window.TryGetPlatformHandle();
             if (platformHandle == null) return false;
             return PInvoke.SetForegroundWindow(new MSWin32.Foundation.HWND(platformHandle.Handle));
-        }
-#else
-        public static bool SetForegroundWindow(Window window) => false;
-#endif
+        }) : new Func<Window, bool>(delegate { return false; });
+
         /// <summary>Brings the thread that created the specified window into the foreground and activates the window.</summary>
         /// <param name="hWnd">
         /// <para>A handle to the window that should be activated and brought to the foreground.</para>

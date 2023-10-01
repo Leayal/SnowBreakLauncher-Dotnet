@@ -5,10 +5,12 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using Shell32 = global::Windows.Win32.UI.Shell;
 using System.Reflection;
+using System.Runtime.Versioning;
 
 namespace Leayal.Shared.Windows
 {
     /// <summary>Convenient methods to interact with Files Explorer of Windows OS.</summary>
+    [SupportedOSPlatform("windows")]
     public static class WindowsExplorerHelper
     {
         private static readonly string ExplorerExe = Path.GetFullPath("explorer.exe", Environment.GetFolderPath(Environment.SpecialFolder.Windows));

@@ -2,33 +2,36 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net7.0</TargetFramework>
-	<!--
-	You can switch between:
-	- Non-windows or Linux: "net7.0"
-	- Windows: "net7.0-windows"
-	You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0", or "net7.0-windows" to "net8.0-windows"
-	-->
+    <!--
+    You can switch between:
+    - Non-windows or Linux: "net7.0"
+    - Windows: "net7.0-windows"
+    You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0", or "net7.0-windows" to "net8.0-windows"
+    -->
     <Nullable>enable</Nullable>
-	<ImplicitUsings>disable</ImplicitUsings>
+    <ImplicitUsings>disable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <RootNamespace>Leayal.SnowBreakLauncher</RootNamespace>
     <ApplicationIcon>snowbreak.ico</ApplicationIcon>
-	<Authors>Dramiel Leayal</Authors>
-	<Company>Dramiel Leayal</Company>
-	<DefineTrace>false</DefineTrace>
-	  <!--
-	  Additional constants are: 
-	  - NO_WMI: Disallow using WMI to listen for ProcessStart and ProcessEnd events, fallback to polling. If publishing Trimming, WMI will not work (as of writing this). Enable this flag if build/publish with Trimming.
-	  - NO_IPV6: Disallow this application connecting to IPv6 destinations regardless OS supports IPv6 or not.
-	  -->
-	<DefineConstants>$(DefineConstants);NO_WMI</DefineConstants>
+    <Authors>Dramiel Leayal</Authors>
+    <Company>Dramiel Leayal</Company>
+    <DefineTrace>false</DefineTrace>
+    <StripSymbols>true</StripSymbols>
+    <!--
+        Additional constants are: 
+        - NO_WMI: Disallow using WMI to listen for ProcessStart and ProcessEnd events, fallback to polling. If publishing Trimming, WMI will not work (as of writing this). Enable this flag if build/publish with Trimming.
+        - NO_IPV6: Disallow this application connecting to IPv6 destinations regardless OS supports IPv6 or not.
+    -->
+    <DefineConstants>$(DefineConstants);NO_WMI</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
     <PublishAot>true</PublishAot>
-    <DefineTrace>false</DefineTrace>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)' == 'Publish'">
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
@@ -44,18 +47,18 @@
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.18-beta">
-	 <PrivateAssets>all</PrivateAssets>
-	</PackageReference>
-	<PackageReference Condition="!$(DefineConstants.Contains('NO_WMI'))" Include="System.Management" Version="7.0.2" />
+    <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.18-beta">
+     <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Condition="!$(DefineConstants.Contains('NO_WMI'))" Include="System.Management" Version="7.0.2" />
     <PackageReference Include="Avalonia" Version="11.0.4" />
     <PackageReference Include="Avalonia.Desktop" Version="11.0.4" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.0.4" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.0.4" />
-	<PackageReference Include="MessageBox.Avalonia" Version="3.1.4" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.1.4" />
     <!--"Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration." is partially wrong-->
-	<!--As of avalon v11.0.0, for whatever reasons, building with configuration Release without this package will simply fail with XAML Parse error (Unable to resolve type SimpleTheme from namespace https://github.com/avaloniaui)-->
-	<!--The option to workaround this is not using SimpleTheme, or including this package below to build with SimpleTheme.-->  
+    <!--As of avalon v11.0.0, for whatever reasons, building with configuration Release without this package will simply fail with XAML Parse error (Unable to resolve type SimpleTheme from namespace https://github.com/avaloniaui)-->
+    <!--The option to workaround this is not using SimpleTheme, or including this package below to build with SimpleTheme.-->  
     <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.0.4" />
   </ItemGroup>
 
