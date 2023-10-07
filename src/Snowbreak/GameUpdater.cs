@@ -378,24 +378,8 @@ sealed class GameUpdater
         {
             // Just want to ensure we finalize things
 
-            // Output new manifest.json in the local
-            var localPath_Manifest = mgr.Files.PathToManifestJson;
-            var localPath_ManifestPopulating = localPath_Manifest + ".updating";
-
-            static Stream OpenWrite(string path)
-            {
-                if (OperatingSystem.IsWindows())
-                {
-                    return File.Create(path);
-                }
-                else
-                {
-                    var broker = GameClientManifestData.OpenFile(path);
-                    return broker.OpenWrite();
-                }
-            }
-            using (var fs_manifest = OpenWrite(localPath_ManifestPopulating))
-            using (var jsonwriter = new Utf8JsonWriter(fs_manifest, new JsonWriterOptions() { Indented = false }))
+            static void WriteManifestDataTo(Utf8JsonWriter jsonwriter, in GameClientManifestData? localManifest, BlockingCollection<PakEntry> needUpdatedOnes, in bool isEverythingDoneNicely,
+                in GameClientManifestData remoteManifest, ConcurrentDictionary<PakEntry, DownloadResult> finishedOnes, IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable)
             {
                 jsonwriter.WriteStartObject();
 
@@ -486,7 +470,35 @@ sealed class GameUpdater
                 outputedOnes = null;
             }
 
-            FileSystem.MoveOverwrite_AwareReadOnly(localPath_ManifestPopulating, localPath_Manifest);
+            // Output new manifest.json in the local
+            var localPath_Manifest = mgr.Files.PathToManifestJson;
+
+            if (OperatingSystem.IsWindows())
+            {
+                var localPath_ManifestPopulating = localPath_Manifest + ".updating";
+                using (var fs_manifest = File.Create(localPath_ManifestPopulating))
+                using (var jsonwriter = new Utf8JsonWriter(fs_manifest, new JsonWriterOptions() { Indented = false }))
+                {
+                    WriteManifestDataTo(jsonwriter, in localManifest, needUpdatedOnes, in isEverythingDoneNicely, in remoteManifest, finishedOnes, bufferedLocalFileTable);
+                }
+                FileSystem.MoveOverwrite_AwareReadOnly(localPath_ManifestPopulating, localPath_Manifest);
+            }
+            else
+            {
+                var newJsonDataBuffering = new ArrayBufferWriter<byte>(1024 * 1024);
+                using (var jsonwriter = new Utf8JsonWriter(newJsonDataBuffering, new JsonWriterOptions() { Indented = false }))
+                {
+                    WriteManifestDataTo(jsonwriter, in localManifest, needUpdatedOnes, in isEverythingDoneNicely, in remoteManifest, finishedOnes, bufferedLocalFileTable);
+                }
+                var broker = GameClientManifestData.OpenFile(localPath_Manifest);
+                using (var writeStream = broker.OpenWrite())
+                {
+                    var size = newJsonDataBuffering.WrittenCount;
+                    writeStream.SetLength(size);
+                    writeStream.Position = 0;
+                    writeStream.Write(newJsonDataBuffering.WrittenSpan);
+                }
+            }
 
             needUpdatedOnes.Dispose();
         }

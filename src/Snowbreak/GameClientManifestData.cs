@@ -131,7 +131,7 @@ public readonly struct GameClientManifestData : IDisposable
 
         public Stream OpenWrite()
         {
-            var memMapped = this.OpenOrCreate(out var writeStream);
+            this.OpenOrCreate(out var writeStream);
             this.ioLocker.EnterWriteLock();
             var syncContext = SynchronizationContext.Current;
             if (syncContext == null)
@@ -139,7 +139,7 @@ public readonly struct GameClientManifestData : IDisposable
                 syncContext = new SynchronizationContext();
                 SynchronizationContext.SetSynchronizationContext(syncContext);
             }
-            return new WrapperReadStream(writeStream, this.ioLocker, syncContext);
+            return new WrapperWriteStream(writeStream, this.ioLocker, syncContext);
         }
 
         class WrapperWriteStream : WrapperReadStream
@@ -156,8 +156,10 @@ public readonly struct GameClientManifestData : IDisposable
 
             private static void AttempGoingBackToTheThreadCreatedThisStreamForRelease(object? obj)
             {
-                if (obj is ReaderWriterLockSlim ioLocker)
+                if (obj is ReaderWriterLockSlim ioLocker && ioLocker.IsWriteLockHeld)
+                {
                     ioLocker.ExitWriteLock();
+                }
             }
         }
 
@@ -185,8 +187,10 @@ public readonly struct GameClientManifestData : IDisposable
 
             private static void AttempGoingBackToTheThreadCreatedThisStreamForRelease(object? obj)
             {
-                if (obj is ReaderWriterLockSlim ioLocker)
+                if (obj is ReaderWriterLockSlim ioLocker && ioLocker.IsReadLockHeld)
+                {
                     ioLocker.ExitReadLock();
+                }
             }
 
             public override bool CanRead => BaseStream.CanRead;
