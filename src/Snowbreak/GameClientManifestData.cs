@@ -5,6 +5,7 @@ using System.Collections.Frozen;
 #endif
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.MemoryMappedFiles;
 using System.Linq;
@@ -58,7 +59,7 @@ public readonly struct GameClientManifestData : IDisposable
     {
         private FileStream? fs;
         private object locker;
-        private bool _created;
+        private volatile bool _created, _mapped;
         private MemoryMappedFile? memMappedFile;
         private readonly string filepath;
         private readonly ReaderWriterLockSlim ioLocker;
@@ -91,48 +92,84 @@ public readonly struct GameClientManifestData : IDisposable
             }
         }
 
-        private FileStream Factory() => new FileStream(this.filepath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read, 4096, true);
+        private FileStream FactoryFS() => new FileStream(this.filepath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.Read, 4096, true);
 
-        private MemoryMappedFile OpenOrCreate(out FileStream writeStream)
+        private MemoryMappedFile FactoryMap()
         {
-            writeStream = LazyInitializer.EnsureInitialized<FileStream>(ref this.fs, ref _created, ref this.locker, this.Factory);
-            var mappedFile = MemoryMappedFile.CreateFromFile(writeStream, null, 0, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, false);
-            var exchangedOne = Interlocked.CompareExchange(ref this.memMappedFile, mappedFile, null);
-            if (exchangedOne != null)
-            {
-                if (exchangedOne != mappedFile)
-                {
-                    // Can't be here anyway
-                    mappedFile.Dispose();
-                }
-                return exchangedOne;
-            }
-            else
-            {
-                return mappedFile;
-            }
+            ArgumentNullException.ThrowIfNull(this.fs);
+            return MemoryMappedFile.CreateFromFile(this.fs, null, 0, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, true);
         }
 
-        public void Dispose() => this.memMappedFile?.Dispose();
+        private void OpenOrCreate(out FileStream writeStream)
+        {
+            writeStream = LazyInitializer.EnsureInitialized<FileStream>(ref this.fs, ref _created, ref this.locker, this.FactoryFS);
+        }
+
+        private bool TryGetMap([NotNullWhen(true)] out MemoryMappedFile? map)
+        {
+            if (this.fs == null || this.fs.Length == 0)
+            {
+                map = null;
+                return false;
+            }
+            map = LazyInitializer.EnsureInitialized<MemoryMappedFile>(ref this.memMappedFile, ref this._mapped, ref this.locker, this.FactoryMap);
+            try
+            {
+                var handle = map.SafeMemoryMappedFileHandle;
+                if (handle.IsInvalid || handle.IsClosed)
+                {
+                    map = RefreshMap();
+                }
+            }
+            catch
+            {
+                map = RefreshMap();
+            }
+            return true;
+        }
+
+        private MemoryMappedFile RefreshMap()
+        {
+            if (this.fs == null || this.fs.Length == 0) throw new InvalidOperationException();
+
+            var mappedFile = MemoryMappedFile.CreateFromFile(this.fs, null, 0, MemoryMappedFileAccess.ReadWrite, HandleInheritability.None, true);
+            Interlocked.Exchange(ref this.memMappedFile, mappedFile)?.Dispose();
+            return mappedFile;
+        }
+
+        public void Dispose()
+        {
+            this.fs?.Dispose();
+            this.memMappedFile?.Dispose();
+        }
 
         public Stream OpenRead()
         {
-            var memMapped = this.OpenOrCreate(out _);
-            this.ioLocker.EnterReadLock();
-            var syncContext = SynchronizationContext.Current;
-            if (syncContext == null)
+            this.OpenOrCreate(out _);
+            if (TryGetMap(out var memMapped))
             {
-                syncContext = new SynchronizationContext();
-                SynchronizationContext.SetSynchronizationContext(syncContext);
+                this.ioLocker.EnterReadLock();
+                var syncContext = SynchronizationContext.Current;
+                if (syncContext == null)
+                {
+                    syncContext = new SynchronizationContext();
+                    SynchronizationContext.SetSynchronizationContext(syncContext);
+                }
+                var readStream = memMapped.CreateViewStream(0, 0, MemoryMappedFileAccess.Read);
+                return new WrapperReadStream(readStream, this.ioLocker, syncContext);
             }
-            var readStream = memMapped.CreateViewStream(0, 0, MemoryMappedFileAccess.Read);
-            return new WrapperReadStream(readStream, this.ioLocker, syncContext);
+            else
+            {
+                return new MemoryStream(Array.Empty<byte>(), 0, 0, false, false);
+            }
         }
 
         public Stream OpenWrite()
         {
             this.OpenOrCreate(out var writeStream);
             this.ioLocker.EnterWriteLock();
+            Interlocked.Exchange(ref this.memMappedFile, null)?.Dispose();
+            this._mapped = false;
             var syncContext = SynchronizationContext.Current;
             if (syncContext == null)
             {
@@ -230,25 +267,35 @@ public readonly struct GameClientManifestData : IDisposable
         }
     }
 
-    #endregion
+#endregion
 
-    public static GameClientManifestData CreateFromLocalFile(string filepath)
+    public static GameClientManifestData? CreateFromLocalFile(string filepath)
     {
         if (OperatingSystem.IsWindows())
         {
             using (var fs = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 0, false))
-            using (var sr = new StreamReader(fs, bufferSize: 4096))
             {
-                return new GameClientManifestData(JsonDocument.Parse(sr.ReadToEnd()));
+                if (fs.Length == 0) return null;
+                using (var sr = new StreamReader(fs, bufferSize: 4096))
+                {
+                    var jsonstring = sr.ReadToEnd();
+                    if (string.IsNullOrEmpty(jsonstring)) return null;
+                    return new GameClientManifestData(JsonDocument.Parse(jsonstring));
+                }
             }
         }
         else
         {
             var broker = OpenFile(filepath);
             using (var reader = broker.OpenRead())
-            using (var sr = new StreamReader(reader, bufferSize: 4096))
             {
-                return new GameClientManifestData(JsonDocument.Parse(sr.ReadToEnd()));
+                if (reader.Length == 0) return null;
+                using (var sr = new StreamReader(reader, bufferSize: 4096))
+                {
+                    var jsonstring = sr.ReadToEnd();
+                    if (string.IsNullOrEmpty(jsonstring)) return null;
+                    return new GameClientManifestData(JsonDocument.Parse(jsonstring));
+                }
             }
         }
     }

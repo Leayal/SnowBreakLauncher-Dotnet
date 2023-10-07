@@ -359,7 +359,8 @@ sealed class GameUpdater
                 // 2 concurrent download streams
                 StartLongRunningTask(DownloadFile, progressCallback?.Download1Progress, cancellationToken),
                 StartLongRunningTask(DownloadFile, progressCallback?.Download2Progress, cancellationToken));
-            isEverythingDoneNicely = true;
+
+            isEverythingDoneNicely = !cancellationToken.CanBeCanceled || !cancellationToken.IsCancellationRequested;
 
             if (progressCallback != null)
             {
