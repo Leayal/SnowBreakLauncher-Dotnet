@@ -381,7 +381,20 @@ sealed class GameUpdater
             // Output new manifest.json in the local
             var localPath_Manifest = mgr.Files.PathToManifestJson;
             var localPath_ManifestPopulating = localPath_Manifest + ".updating";
-            using (var fs_manifest = File.Create(localPath_ManifestPopulating))
+
+            static Stream OpenWrite(string path)
+            {
+                if (OperatingSystem.IsWindows())
+                {
+                    return File.Create(path);
+                }
+                else
+                {
+                    var broker = GameClientManifestData.OpenFile(path);
+                    return broker.OpenWrite();
+                }
+            }
+            using (var fs_manifest = OpenWrite(localPath_ManifestPopulating))
             using (var jsonwriter = new Utf8JsonWriter(fs_manifest, new JsonWriterOptions() { Indented = false }))
             {
                 jsonwriter.WriteStartObject();

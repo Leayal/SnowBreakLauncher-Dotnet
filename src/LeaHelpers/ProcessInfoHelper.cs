@@ -1,31 +1,12 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Buffers;
-using Microsoft.Win32.SafeHandles;
-using MSWin32 = global::Windows.Win32;
-using PInvoke = global::Windows.Win32.PInvoke;
 using System.Runtime.CompilerServices;
 using System.Threading;
-using System.Runtime.Versioning;
 
 namespace Leayal.Shared.Windows
 {
-    /// <summary>A class provides quick and convenience method that .NET6 APIs doesn't really provide (yet?).</summary>
-    [SupportedOSPlatform("windows")]
-    public static class ProcessInfoHelper
+    public static partial class ProcessInfoHelper
     {
-        internal static readonly SafeProcessHandle InvalidHandle = new SafeProcessHandle();
-
-        internal static SafeProcessHandle OpenProcessForQueryLimitedInfo(uint processId)
-        {
-            var handle = PInvoke.OpenProcess(MSWin32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
-            if (handle.IsNull)
-            {
-                return InvalidHandle;
-            }
-            return new SafeProcessHandle(handle.Value, true);
-        }
-
         /// <summary>Define callback interface.</summary>
         /// <param name="process">The process which has been exited.</param>
         /// <param name="processId">The unique identifier of the process. In case the callback is invoked immediately because the process has already been exited, this will be zero.</param>
@@ -44,192 +25,22 @@ namespace Leayal.Shared.Windows
         /// <exception cref="ArgumentNullException"><paramref name="process"/> or <paramref name="callback"/> is <see langword="null"/>.</exception>
         public static bool RegisterProcessExitCallback(this Process process, ProcessExitCallback callback, CancellationToken cancellationToken = default, bool immediatelyInvokeCallbackIfAlreadyExited = false)
         {
-            ArgumentNullException.ThrowIfNull(process);
-            ArgumentNullException.ThrowIfNull(callback);
-
-            if (immediatelyInvokeCallbackIfAlreadyExited && process.HasExited)
-            {
-                callback.Invoke(process, 0);
-            }
-
-            uint procId = unchecked((uint)process.Id);
-            var handle = PInvoke.OpenProcess(MSWin32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_SYNCHRONIZE, false, procId);
-            if (handle.IsNull)
-            {
-                return false;
-            }
-            var waitHandle = new ProcessWaitHandle(new SafeWaitHandle(handle.Value, true));
-            var registeredWaitHandle = ThreadPool.RegisterWaitForSingleObject(waitHandle, new WaitOrTimerCallback(ProcessWaitedForExit), new Tuple<ProcessWaitHandle, Process, uint, ProcessExitCallback>(waitHandle, process, procId, callback), Timeout.Infinite, true);
-            cancellationToken.Register(obj =>
-            {
-                if (obj is Tuple<RegisteredWaitHandle, ProcessWaitHandle> data)
-                {
-                    var (registeredWaitHandle, waitHandle) = data;
-                    registeredWaitHandle.Unregister(null);
-                    waitHandle.Dispose();
-                }
-            }, new Tuple<RegisteredWaitHandle, ProcessWaitHandle>(registeredWaitHandle, waitHandle), false);
-            return true;
-        }
-
-        sealed class ProcessWaitHandle : WaitHandle
-        {
-            public ProcessWaitHandle(SafeWaitHandle swh)
-            {
-                this.SafeWaitHandle = swh;
-            }
-        }
-
-        private static void ProcessWaitedForExit(object? obj, bool timedOut)
-        {
-            if (obj is Tuple<ProcessWaitHandle, Process, uint, ProcessExitCallback> tuple)
-            {
-                var (waitHandle, process, procId, callback) = tuple;
-                waitHandle.Dispose();
-                callback.Invoke(process, in procId);
-            }
-        }
-
-        /// <summary>The hint about type of path to returns when calling the method.</summary>
-        public enum QueryProcessNameType : uint
-        {
-            /// <summary>The name should use the Win32 path format.</summary>
-            Win32 = 0,
-            /// <summary>The name should use the native system path format.</summary>
-            Native = 0x00000001
+            if (OperatingSystem.IsWindows())
+                return Win.RegisterProcessExitCallback(process, callback, cancellationToken, immediatelyInvokeCallbackIfAlreadyExited);
+            else
+                return Unix.RegisterProcessExitCallback(process, callback, cancellationToken, immediatelyInvokeCallbackIfAlreadyExited);
         }
 
         /// <summary>Retrieves the full name of the executable image for the specified process.</summary>
         /// <param name="process">The process to get the file path.</param>
-        /// <param name="buffer">The minimum number of character buffer size to pre-allocate to fetch the path string. Default size is 4096.</param>
-        /// <param name="uacHint">Hinting the API to aware about access rights between proccesses with different privilleges. This mainly to avoid overhead caused by raising Exception.</param>
         /// <returns>A string contains full path to the executable file which started the process. Or <see langword="null"/> on failures.</returns>
-        public static string? QueryFullProcessImageName(this Process process, int buffer = 4096, bool uacHint = false)
-            => QueryFullProcessImageName(process, QueryProcessNameType.Win32, buffer, uacHint);
-
-        /// <summary>Retrieves the full name of the executable image for the specified process.</summary>
-        /// <param name="processHandle">The handle to the process to get the file path.</param>
-        /// <param name="buffer">The minimum number of character buffer size to pre-allocate to fetch the path string. Default size is 4096.</param>
-        /// <returns>A string contains full path to the executable file which started the process. Or <see langword="null"/> on failures.</returns>
-        public static string? QueryFullProcessImageName(SafeProcessHandle processHandle, int buffer = 4096)
-            => QueryFullProcessImageName(processHandle, QueryProcessNameType.Win32, buffer);
-
-        /// <summary>Retrieves the full name of the executable image for the specified process.</summary>
-        /// <param name="process">The process to get the file path.</param>
-        /// <param name="nameType">The hint about type of path to returns when calling the method.</param>
-        /// <param name="buffer">The minimum number of character buffer size to pre-allocate to fetch the path string. Default size is 4096.</param>
-        /// <param name="uacHint">Hinting the API to aware about access rights between proccesses with different privilleges. This mainly to avoid overhead caused by raising Exception.</param>
-        /// <returns>A string contains full path to the executable file which started the process. Or <see langword="null"/> on failures.</returns>
-        public static string? QueryFullProcessImageName(this Process process, QueryProcessNameType nameType, int buffer = 4096, bool uacHint = false)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static string? QueryFullProcessImageName(this Process process)
         {
-            SafeProcessHandle hProcess;
-            bool isOwnHandle = false;
-            try
-            {
-                if (uacHint)
-                {
-                    if (UacHelper.IsCurrentProcessElevated)
-                    {
-                        // This may still cause Access Denied error.
-                        hProcess = process.SafeHandle;
-                    }
-                    else
-                    {
-                        hProcess = OpenProcessForQueryLimitedInfo(unchecked((uint)(process.Id)));
-                        if (hProcess.IsInvalid)
-                        {
-                            return null;
-                        }
-                        isOwnHandle = true;
-                    }
-                }
-                else
-                {
-                    // This may cause Access Denied error.
-                    hProcess = process.SafeHandle;
-                }
-            }
-            catch (System.ComponentModel.Win32Exception ex) when (ex.HResult == -2147467259)
-            {
-                // Should be access denied. So we open by our own with "LimitedQuery" access right.
-                hProcess = OpenProcessForQueryLimitedInfo(unchecked((uint)(process.Id)));
-                if (hProcess.IsInvalid)
-                {
-                    return null;
-                }
-                isOwnHandle = true;
-            }
-            try
-            {
-                return QueryFullProcessImageName(hProcess, isOwnHandle ? 0 : unchecked((uint)(process.Id)), nameType, buffer);
-            }
-            finally
-            {
-                if (isOwnHandle)
-                {
-                    hProcess.Dispose();
-                }
-            }
-        }
-
-        /// <summary>Retrieves the full name of the executable image for the specified process.</summary>
-        /// <param name="processHandle">The handle to the process to get the file path.</param>
-        /// <param name="nameType">The hint about type of path to returns when calling the method.</param>
-        /// <param name="buffer">The minimum number of character buffer size to pre-allocate to fetch the path string. Default size is 4096.</param>
-        /// <returns>A string contains full path to the executable file which started the process. Or <see langword="null"/> on failures.</returns>
-        public static string? QueryFullProcessImageName(SafeProcessHandle processHandle, QueryProcessNameType nameType, int buffer = 4096)
-            => QueryFullProcessImageName(processHandle, UacHelper.IsCurrentProcessElevated ? 0 : PInvoke.GetProcessId(processHandle), nameType, buffer);
-
-        private static string? QueryFullProcessImageName(SafeProcessHandle processHandle, uint processId, QueryProcessNameType dwNameType, int buffer)
-        {
-            char[] ch = ArrayPool<char>.Shared.Rent(buffer + 1);
-            try
-            {
-                uint bufferLength = Convert.ToUInt32(ch.Length - 1);
-                bool isSuccess;
-                unsafe
-                {
-                    fixed (char* c = ch)
-                    {
-                        isSuccess = PInvoke.QueryFullProcessImageName(processHandle, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), new MSWin32.Foundation.PWSTR(c), ref bufferLength);
-                    }
-                }
-                if (isSuccess)
-                {
-                    return new string(ch, 0, Convert.ToInt32(bufferLength));
-                }
-                else if (processId != 0)
-                {
-                    bufferLength = Convert.ToUInt32(ch.Length - 1);
-                    using (var hProcess = OpenProcessForQueryLimitedInfo(processId))
-                    {
-                        if (hProcess.IsInvalid)
-                        {
-                            return null;
-                        }
-                        unsafe
-                        {
-                            fixed (char* c = ch)
-                            {
-                                isSuccess = PInvoke.QueryFullProcessImageName(hProcess, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), new MSWin32.Foundation.PWSTR(c), ref bufferLength);
-                            }
-                        }
-                        if (isSuccess)
-                        {
-                            return new string(ch, 0, Convert.ToInt32(bufferLength));
-                        }
-                        else
-                        {
-                            return null;
-                        }
-                    }
-                }
-                return null;
-            }
-            finally
-            {
-                ArrayPool<char>.Shared.Return(ch, true);
-            }
+            if (OperatingSystem.IsWindows())
+                return Win.QueryFullProcessImageName(process, Win.QueryProcessNameType.Win32, 4096, true);
+            else
+                return Unix.GetProcessInfo(process, "exe");
         }
     }
 }

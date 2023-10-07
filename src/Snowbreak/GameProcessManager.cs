@@ -10,6 +10,7 @@ using System.Threading;
 using System.Globalization;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
+using System.Runtime.CompilerServices;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -18,9 +19,9 @@ sealed class GameProcessManager : IDisposable
     private readonly GameManager manager;
 
 #if NO_WMI
-    private readonly PollingTick? pollingProcessWatcher;
+    private readonly PollingTick pollingProcessWatcher;
     private Process? _gameProcess;
-    private readonly CancellationTokenSource? waitFinalCancel;
+    private readonly CancellationTokenSource waitFinalCancel;
 #else
     private readonly ManagementEventWatcher processWatcher;
     private static readonly ManagementScope cachedWMI_Scope = new ManagementScope(@"\\.\root\CIMV2");
@@ -31,36 +32,34 @@ sealed class GameProcessManager : IDisposable
     {
         this.manager = manager;
 
-        if (OperatingSystem.IsWindows())
-        {
-            this.waitFinalCancel = new CancellationTokenSource();
+        this.waitFinalCancel = new CancellationTokenSource();
 
 #if NO_WMI
-            this._gameProcess = this.FindProcessFromExistingProcesses();
-            this.pollingProcessWatcher = new PollingTick(this.OnPollingTick);
-            if (this._gameProcess == null)
+        this._gameProcess = this.FindProcessFromExistingProcesses();
+        this.pollingProcessWatcher = new PollingTick(this.OnPollingTick);
+        if (this._gameProcess == null)
+        {
+            this.pollingProcessWatcher.Start();
+        }
+        else
+        {
+            try
+            {
+                if (this._gameProcess.HasExited)
+                {
+                    this._gameProcess = null;
+                    this.pollingProcessWatcher.Start();
+                }
+                else
+                {
+                    this._gameProcess.RegisterProcessExitCallback(this.OnPollingGameProcessExited, this.waitFinalCancel.Token);
+                }
+            }
+            catch
             {
                 this.pollingProcessWatcher.Start();
             }
-            else
-            {
-                try
-                {
-                    if (this._gameProcess.HasExited)
-                    {
-                        this._gameProcess = null;
-                        this.pollingProcessWatcher.Start();
-                    }
-                    else
-                    {
-                        this._gameProcess.RegisterProcessExitCallback(this.OnPollingGameProcessExited, this.waitFinalCancel.Token);
-                    }
-                }
-                catch
-                {
-                    this.pollingProcessWatcher.Start();
-                }
-            }
+        }
 #else
             this._processId = this.FindProcessIdFromExistingProcesses();
             var spanOfProcessName = Path.GetFileName(manager.GameExecutablePath.AsSpan());
@@ -73,7 +72,6 @@ sealed class GameProcessManager : IDisposable
             this.processWatcher.EventArrived += this.WMIEventArrived;
             this.processWatcher.Start();
 #endif
-        }
     }
 
     public delegate void ProcessOperationHandler(in uint processId);
@@ -81,40 +79,26 @@ sealed class GameProcessManager : IDisposable
 
     private static readonly Func<Process, string, bool> IsTargetedProcess = OperatingSystem.IsWindows() ? IsTargetedProcess_Win : IsTargetedProcess_Linux;
 
-    [SupportedOSPlatform("windows")]
+    [SupportedOSPlatform("windows"), MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsTargetedProcess_Win(Process proc, string targetProcessPath)
     {
-        var procPath = proc.QueryFullProcessImageName(uacHint: true);
+        var procPath = proc.QueryFullProcessImageName();
         return string.Equals(procPath, targetProcessPath, StringComparison.OrdinalIgnoreCase);
     }
 
+    [UnsupportedOSPlatform("windows"), MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static bool IsTargetedProcess_Linux(Process proc, string targetProcessPath)
     {
-        static ReadOnlySpan<char> GetProcessInfo(Process proc, string infoName)
-        {
-            using (var readLinkProc = new Process())
-            {
-                readLinkProc.StartInfo.FileName = "readlink";
-                readLinkProc.StartInfo.UseShellExecute = false;
-                readLinkProc.StartInfo.RedirectStandardOutput = true;
-                readLinkProc.StartInfo.ArgumentList.Add("-f");
-                // "infoName" should be "exe" or "cmdline"
-                readLinkProc.StartInfo.ArgumentList.Add($"/proc/{proc.Id.ToString(NumberFormatInfo.InvariantInfo)}/{infoName}");
-                readLinkProc.Start();
-                readLinkProc.WaitForExit();
-                var fullpath = readLinkProc.StandardOutput.ReadToEnd();
-                if (string.IsNullOrWhiteSpace(fullpath)) return ReadOnlySpan<char>.Empty;
-                var span = fullpath.AsSpan().Trim();
-                return span;
-            }
-        }
-        // "readlink -f /proc/<pid>/exe" is quite useless, as we're searching for Wine, but we only get a "wine" instance without knowing what is running inside the wine.
-        // We use "readlink -f /proc/<pid>/cmdline" instead.
-        var span = GetProcessInfo(proc, "exe");
-        if (span.IsEmpty) return false;
-        if (!MemoryExtensions.Equals(span, "wine", StringComparison.Ordinal) && MemoryExtensions.EndsWith(span, "/wine", StringComparison.Ordinal)) return false;
+        // Currently, it's FUBAR and I haven't found a way for it to work yet.
+        // Tried readlink with both Shell execute "readlink" program (yes, it's a program with the same name) and libc's "readlink" function export,
+        // both fail and return null regardless.
+        return false;
 
-        span = GetProcessInfo(proc, "cmdline");
+        var exe = ProcessInfoHelper.QueryFullProcessImageName(proc);
+        if (string.IsNullOrEmpty(exe)) return false;
+        if (!MemoryExtensions.Equals(exe, "wine", StringComparison.Ordinal) && MemoryExtensions.EndsWith(exe, "/wine", StringComparison.Ordinal)) return false;
+
+        var span = ProcessInfoHelper.Unix.GetProcessInfo(proc, "cmdline");
         return MemoryExtensions.Contains(span, targetProcessPath, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -123,7 +107,7 @@ sealed class GameProcessManager : IDisposable
         Process? result = null;
         var targetProcessPath = this.manager.GameExecutablePath;
 
-        foreach (var proc in Process.GetProcessesByName(Path.GetFileNameWithoutExtension(targetProcessPath)))
+        foreach (var proc in Process.GetProcessesByName(OperatingSystem.IsWindows() ? Path.GetFileNameWithoutExtension(targetProcessPath) : "wine"))
         {
             if (IsTargetedProcess.Invoke(proc, targetProcessPath))
             {
@@ -148,14 +132,12 @@ sealed class GameProcessManager : IDisposable
     public bool IsGameRunning => (this._gameProcess != null);
     public uint GameProcessId => (this._gameProcess == null ? 0 : unchecked((uint)this._gameProcess.Id));
 
-    [SupportedOSPlatform("windows")]
     private void OnPollingGameProcessExited(Process proc, in uint processId)
     {
         this.OnGameProcessExit(proc, processId);
         this.pollingProcessWatcher?.Start();
     }
 
-    [SupportedOSPlatform("windows")]
     private void OnPollingTick()
     {
         if (this.FindProcessFromExistingProcesses() is Process proc)
@@ -165,7 +147,6 @@ sealed class GameProcessManager : IDisposable
         }
     }
 
-    [SupportedOSPlatform("windows")]
     sealed class PollingTick : IDisposable
     {
         private readonly Action callback;
@@ -225,7 +206,6 @@ sealed class GameProcessManager : IDisposable
         public void Dispose() => this.timer.Dispose();
     }
 
-    [SupportedOSPlatform("windows")]
     private void OnGameProcessStart(Process process)
     {
         if (process.HasExited)
@@ -242,7 +222,6 @@ sealed class GameProcessManager : IDisposable
         }
     }
 
-    [SupportedOSPlatform("windows")]
     private void OnGameProcessExit(Process? process, in uint processId)
     {
         var proc = Interlocked.Exchange(ref this._gameProcess, null) ?? process;
@@ -393,7 +372,7 @@ sealed class GameProcessManager : IDisposable
 
 
 #if NO_WMI
-        if (OperatingSystem.IsWindows()) this.pollingProcessWatcher?.Stop();
+        this.pollingProcessWatcher?.Stop();
 #endif
 
         Process? proc = null;
@@ -490,41 +469,35 @@ sealed class GameProcessManager : IDisposable
         }
         finally
         {
-            if (OperatingSystem.IsWindows())
-            {
 #if NO_WMI
-                if (proc == null)
-                {
-                    this.pollingProcessWatcher?.Start();
-                }
-                else
-                {
-                    this.OnGameProcessStart(proc);
-                }
+            if (proc == null)
+            {
+                this.pollingProcessWatcher?.Start();
+            }
+            else
+            {
+                this.OnGameProcessStart(proc);
+            }
 #else
                 proc?.Dispose();
 #endif
-            }
         }
     }
 
     public void Dispose()
     {
-        if (OperatingSystem.IsWindows())
-        {
 #if NO_WMI
-            // this.pollingProcessWatcher.Stop();
-            this.pollingProcessWatcher?.Dispose();
-            if (this.waitFinalCancel != null)
-            {
-                this.waitFinalCancel.Cancel();
-                this.waitFinalCancel.Dispose();
-            }
+        // this.pollingProcessWatcher.Stop();
+        this.pollingProcessWatcher?.Dispose();
+        if (this.waitFinalCancel != null)
+        {
+            this.waitFinalCancel.Cancel();
+            this.waitFinalCancel.Dispose();
+        }
 #else
             this.processWatcher.Stop();
             this.processWatcher.EventArrived -= this.WMIEventArrived;
             this.processWatcher.Dispose();
 #endif
-        }
     }
 }

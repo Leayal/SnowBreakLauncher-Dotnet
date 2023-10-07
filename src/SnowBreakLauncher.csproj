@@ -1,7 +1,12 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net7.0;net7.0-windows;net8.0;net8.0-windows</TargetFrameworks>
+    <TargetFrameworks>net7.0;net7.0-windows</TargetFrameworks>
+	<!--Removes "net8.0;net8.0-windows" because despite not select these frameworks at all, VS2022 still tries to build on top of these UNSELECTED ones.
+	Not only that, it will make VS2022 consider compilation failure due to the fact that CsWin32 destroyed compiler's analyzer by generating incompatible codes with .NET8.
+	Also the instructions for customizing generated code of CsWin32 isn't very clear, either, I tried partial-ed class (and the opposite), as well as partial-ed method (and the opposite, too), compiler either complained ambigious for partial-ed attempt (or duplicate class/method, for non-partial attempt).
+	So I gave up trying CsWin32 on .NET8 until Microsoft themselves can get their whole things work altogether in harmony.
+	Build scripts aren't affected by this, just VS2022's dumb design.-->
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
@@ -43,6 +48,7 @@
 
   <ItemGroup>
     <!--CsWin32 v0.3.46-beta still does not generate compatible code with .NET 8 SDK v1.0.0-rc1-->
+	<!--Also, .NET 8 SDK v1.0.0-rc1 is a pure disappointment, as well as the VS2022, reason above, right below the TargetFrameworks prop-->
     <PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.46-beta">
      <PrivateAssets>all</PrivateAssets>
     </PackageReference>

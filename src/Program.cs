@@ -5,6 +5,7 @@ using Leayal.SnowBreakLauncher.Windows;
 using System;
 using System.Runtime.CompilerServices;
 using Avalonia.Threading;
+using Leayal.SnowBreakLauncher.Snowbreak;
 
 namespace Leayal.SnowBreakLauncher;
 
@@ -66,12 +67,14 @@ class Program
 
         protected override void OnRemoteProcessRun(int processId, string[] args)
         {
+            /*
             if (args.Length == 2 && string.Equals(args[0], "--update-launcher", StringComparison.OrdinalIgnoreCase))
             {
                 var targetFilename = args[1];
                 // Begin swapping file
                 return;
             }
+            */
             base.OnRemoteProcessRun(processId, args);
         }
 
@@ -80,6 +83,9 @@ class Program
             var app = BuildAvaloniaApp(this);
             if (app == null) return;
             Environment.ExitCode = app.StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
+
+            // When shutting down the launcher, closing the file handles, too.
+            if (!OperatingSystem.IsWindows()) GameClientManifestData.CloseAllHandles();
         }
 
         private static void ShutdownProcess()

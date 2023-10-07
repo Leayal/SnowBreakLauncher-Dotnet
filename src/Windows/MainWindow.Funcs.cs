@@ -22,6 +22,9 @@ namespace Leayal.SnowBreakLauncher.Windows
 
         private void OnGameManagerChanged(GameManager? oldOne, GameManager newOne)
         {
+            // Since we're changing directory, closing the old File handles in the old directory. This is only meaningful on non-Windows.
+            if (!OperatingSystem.IsWindows()) GameClientManifestData.CloseAllHandles();
+
             if (oldOne != null)
             {
                 oldOne.Process.ProcessStarted -= GameManager_Process_Started;
