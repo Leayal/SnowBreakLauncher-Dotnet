@@ -18,6 +18,8 @@ using System.IO;
 using Avalonia;
 using Leayal.Shared.Windows;
 using System.Diagnostics;
+using Leayal.SnowBreakLauncher.Classes;
+using System.Runtime.Versioning;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
@@ -29,6 +31,24 @@ namespace Leayal.SnowBreakLauncher.Windows
             base.OnLoaded(e);
             
             await Task.WhenAll(this.AfterLoaded_Btn_GameStart(), this.AfterLoaded_LauncherNews());
+        }
+
+        private void ExtraContextMenu_Initialized(object? sender, EventArgs e)
+        {
+            if (!OperatingSystem.IsWindows() && sender is ContextMenu ctxMenu)
+            {
+                var linuxWineSettingsBtn = new MenuItem();
+                linuxWineSettingsBtn.Header = new TextBlock() { Text = "Wine Settings" };
+                linuxWineSettingsBtn.Click += this.LinuxWineSettingsBtn_Click;
+                ctxMenu.Items.Add(linuxWineSettingsBtn);
+            }
+        }
+
+        [UnsupportedOSPlatform("windows")]
+        private void LinuxWineSettingsBtn_Click(object? sender, RoutedEventArgs e)
+        {
+            var dialog = new LinuxWineSettings();
+            dialog.ShowDialog(this);
         }
 
         private async Task AfterLoaded_LauncherNews()

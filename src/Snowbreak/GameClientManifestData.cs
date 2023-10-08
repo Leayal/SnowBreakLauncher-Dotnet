@@ -8,7 +8,6 @@ using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.IO.MemoryMappedFiles;
-using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 using System.Text.Json;
@@ -22,8 +21,9 @@ public readonly struct GameClientManifestData : IDisposable
 
     // The workaround is simple: Ensure there is only one single File Handle of one particular file.
     // If the same error still occurs, that means either this launcher is running multiple instances (which is questionable...), or there's a process outside of the user's machine using the file.
-    // There is, however, some drawbacks from this: There can only one single write operation at a time (which is no problem as a file shouldn't be overlapped writing anyway)
-    // and the File handle will always be opened with Read&Write access and OpenOrCreate mode, insignificant drawback is the extra cost of all the checks.
+    // ....Or the FileSystem of the running OS is questionable, my speculation was that .NET runtime couldn't close the file handle properly, leaving it lingering/hanging and any subsequent opening would result in File-In-Use due to overlapped file handle.
+    // There is, however, some drawbacks from this: There can only one single write operation at a time (which is no problem as a file shouldn't be overlapping writing anyway)
+    // and the File handle will always be opened with Read&Write access and OpenOrCreate mode, and another insignificant drawback is the extra cost of all the checks.
 
     private static readonly ConcurrentDictionary<string, FileStreamBroker> CachedBrokers = new(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
 
@@ -58,10 +58,11 @@ public readonly struct GameClientManifestData : IDisposable
     internal class FileStreamBroker : IDisposable
     {
         private FileStream? fs;
-        private object locker;
-        private volatile bool _created, _mapped;
+        private readonly object locker;
+        private bool _created, _mapped;
         private MemoryMappedFile? memMappedFile;
         private readonly string filepath;
+        // This is "expensive", as the execution may have to wait due to locks. Expensive cost here is the time execution length prolonged due to waitings, not memory.
         private readonly ReaderWriterLockSlim ioLocker;
 
         public FileStreamBroker(string filepath)
@@ -102,7 +103,7 @@ public readonly struct GameClientManifestData : IDisposable
 
         private void OpenOrCreate(out FileStream writeStream)
         {
-            writeStream = LazyInitializer.EnsureInitialized<FileStream>(ref this.fs, ref _created, ref this.locker, this.FactoryFS);
+            writeStream = LazyInitializer.EnsureInitialized<FileStream>(ref this.fs, ref this._created, ref Unsafe.AsRef(in this.locker), this.FactoryFS);
         }
 
         private bool TryGetMap([NotNullWhen(true)] out MemoryMappedFile? map)
@@ -112,7 +113,8 @@ public readonly struct GameClientManifestData : IDisposable
                 map = null;
                 return false;
             }
-            map = LazyInitializer.EnsureInitialized<MemoryMappedFile>(ref this.memMappedFile, ref this._mapped, ref this.locker, this.FactoryMap);
+            
+            map = LazyInitializer.EnsureInitialized<MemoryMappedFile>(ref this.memMappedFile, ref this._mapped, ref Unsafe.AsRef(in this.locker), this.FactoryMap);
             try
             {
                 var handle = map.SafeMemoryMappedFileHandle;

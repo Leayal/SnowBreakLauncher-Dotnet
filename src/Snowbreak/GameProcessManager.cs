@@ -11,6 +11,7 @@ using System.Globalization;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
 using System.Runtime.CompilerServices;
+using Leayal.SnowBreakLauncher.Classes;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -94,12 +95,14 @@ sealed class GameProcessManager : IDisposable
         // both fail and return null regardless.
         return false;
 
+        /*
         var exe = ProcessInfoHelper.QueryFullProcessImageName(proc);
         if (string.IsNullOrEmpty(exe)) return false;
         if (!MemoryExtensions.Equals(exe, "wine", StringComparison.Ordinal) && MemoryExtensions.EndsWith(exe, "/wine", StringComparison.Ordinal)) return false;
 
         var span = ProcessInfoHelper.Unix.GetProcessInfo(proc, "cmdline");
         return MemoryExtensions.Contains(span, targetProcessPath, StringComparison.OrdinalIgnoreCase);
+        */
     }
 
     private Process? FindProcessFromExistingProcesses()
@@ -340,11 +343,11 @@ sealed class GameProcessManager : IDisposable
     /// <param name="wineVersionString">The version string which was returned by "wine --version" command line.</param>
     /// <returns><see langword="true"/> if Wine is installed and the command has been invoked successfully from this launcher. Otherwise, <see langword="false"/>.</returns>
     [UnsupportedOSPlatform("windows")]
-    public bool TryGetWineVersion([NotNullWhen(true)] out string? wineVersionString)
+    public bool TryGetWineVersion(string? winePath, [NotNullWhen(true)] out string? wineVersionString)
     {
         using (var proc = new Process())
         {
-            proc.StartInfo.FileName = "wine";
+            proc.StartInfo.FileName = string.IsNullOrWhiteSpace(winePath) ? "wine" : winePath;
             proc.StartInfo.UseShellExecute = false;
             proc.StartInfo.ArgumentList.Add("--version");
             proc.StartInfo.RedirectStandardOutput = true;
@@ -353,7 +356,7 @@ sealed class GameProcessManager : IDisposable
                 proc.Start();
                 proc.WaitForExit();
                 wineVersionString = proc.StandardOutput.ReadLine() ?? string.Empty;
-                return true;
+                return wineVersionString.StartsWith("wine", StringComparison.OrdinalIgnoreCase);
             }
             catch
             {
@@ -392,22 +395,32 @@ sealed class GameProcessManager : IDisposable
             }
             else if (OperatingSystem.IsLinux())
             {
-                if (TryGetWineVersion(out _))
+                if (App.Current is App app)
                 {
-                    proc.StartInfo.FileName = "wine";
-                    // I heard that Wine run Windows processes as Admin by default?
-                    // Unverified, need help.
-                    proc.StartInfo.UseShellExecute = true;
+                    var winePath = app.LeaLauncherConfig.WinePath;
+                    if (string.IsNullOrWhiteSpace(winePath) || !TryGetWineVersion(winePath, out _)) winePath = "wine"; // Fall-back to system-installed Wine if specified path doesn't exist or not a wine.
+                    if (TryGetWineVersion(winePath, out _))
+                    {
+                        proc.StartInfo.FileName = winePath;
+                        // I heard that Wine run Windows processes as Admin by default?
+                        // Unverified, need help.
+                        proc.StartInfo.UseShellExecute = true;
 
-                    argList.Add("start");
-                    argList.Add("/wait");
-                    argList.Add("/unix");
-                    argList.Add(executablePath);
+                        argList.Add("start");
+                        argList.Add("/wait");
+                        if (app.LeaLauncherConfig.WineUseUnixFileSystem) argList.Add("/unix");
+                        argList.Add(executablePath);
+                    }
+                    else
+                    {
+                        // I don't know how to support Proton of Steam, nor any alternatives yet.
+                        // So let's throw this Wine-aware-only error for now.
+                        throw new WineNotFoundException();
+                    }
                 }
                 else
                 {
-                    // I don't know how to support Proton of Steam, nor any alternatives yet.
-                    throw new NotSupportedException();
+                    throw new InvalidOperationException();
                 }
             }
             else throw new NotSupportedException();

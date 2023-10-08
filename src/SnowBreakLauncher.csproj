@@ -67,4 +67,8 @@
   <ItemGroup>
     <UpToDateCheckInput Remove="Controls\LauncherNewsItemListView.axaml" />
   </ItemGroup>
+
+  <ItemGroup>
+    <UpToDateCheckInput Remove="Windows\LinuxWineSettings.axaml" />
+  </ItemGroup>
 </Project>

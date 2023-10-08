@@ -1,7 +1,7 @@
-﻿using System;
+﻿using Avalonia.Controls.Converters;
+using System;
 using System.IO;
 using System.Text.Json;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Leayal.SnowBreakLauncher.Classes
 {
@@ -10,28 +10,6 @@ namespace Leayal.SnowBreakLauncher.Classes
         private readonly FileStream fs_config;
 
         public string GetPathToConfigFile() => this.fs_config.Name;
-
-        /// <remarks>This thing shouldn't be used to prevent multiple process instances on Windows. Better using Pipes or Mutexes.</remarks>
-        private static bool TrySingleInstance(string filepath, [NotNullWhen(true)] out OfficialJsonConfiguration? instance)
-        {
-            OfficialJsonConfiguration? result = null;
-            try
-            {
-                result = new OfficialJsonConfiguration(filepath);
-                result.fs_config.Lock(0, 0);
-
-                instance = result;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                result?.Dispose();
-                result = null;
-                if (ex is not IOException) throw;
-            }
-            instance = result;
-            return false;
-        }
 
         public OfficialJsonConfiguration(string filepath)
         {
@@ -42,78 +20,84 @@ namespace Leayal.SnowBreakLauncher.Classes
         /// <summary>Returns path to game client installation.</summary>
         public string GameClientInstallationPath
         {
-            get
-            {
-                try
-                {
-                    this.fs_config.Position = 0;
-                    using (var jsonConf = JsonDocument.Parse(this.fs_config))
-                    {
-                        if (jsonConf.RootElement.TryGetProperty("dataPath", out var prop_dataPath) && prop_dataPath.ValueKind == JsonValueKind.String)
-                        {
-                            return prop_dataPath.GetString() ?? string.Empty;
-                        }
-                    }
-                }
-                catch (JsonException) { }
-                return string.Empty;
-            }
-            set
-            {
-                ArgumentNullException.ThrowIfNull(value);
+            get => this.GetValue("dataPath");
+            set => this.SetValue("dataPath", value);
+        }
 
-                // This whole mess below is to keep other configuration values intact.
-                // Only changing "dataPath" value.
+        private string GetValue(string key)
+        {
+            try
+            {
                 this.fs_config.Position = 0;
-                bool shouldUpdate = false;
-                JsonElement? cloned = null;
-                try
+                using (var jsonConf = JsonDocument.Parse(this.fs_config))
                 {
-                    using (var jsonConf = JsonDocument.Parse(this.fs_config))
+                    if (jsonConf.RootElement.TryGetProperty(key, out var prop_dataPath) && prop_dataPath.ValueKind == JsonValueKind.String)
                     {
-                        if (jsonConf.RootElement.TryGetProperty("dataPath", out var prop_dataPath) && prop_dataPath.ValueKind == JsonValueKind.String)
+                        return prop_dataPath.GetString() ?? string.Empty;
+                    }
+                }
+            }
+            catch (JsonException) { }
+            return string.Empty;
+        }
+
+        private void SetValue(string key, string value)
+        {
+            ArgumentNullException.ThrowIfNull(value);
+
+            // This whole mess below is to keep other configuration values intact.
+            this.fs_config.Position = 0;
+            bool shouldUpdate = false;
+            JsonElement? cloned = null;
+            try
+            {
+                using (var jsonConf = JsonDocument.Parse(this.fs_config))
+                {
+                    if (jsonConf.RootElement.TryGetProperty(key, out var prop_dataPath) && prop_dataPath.ValueKind == JsonValueKind.String)
+                    {
+                        if (!string.Equals(prop_dataPath.GetString() ?? string.Empty, value, StringComparison.OrdinalIgnoreCase))
                         {
-                            if (!string.Equals(prop_dataPath.GetString() ?? string.Empty, value, StringComparison.OrdinalIgnoreCase))
-                            {
-                                shouldUpdate = true;
-                                cloned = jsonConf.RootElement.Clone();
-                            }
+                            shouldUpdate = true;
+                            cloned = jsonConf.RootElement.Clone();
                         }
                     }
                 }
-                catch (JsonException)
-                { 
-                    cloned = null;
-                    shouldUpdate = true;
-                }
-                if (shouldUpdate)
+            }
+            catch (JsonException)
+            {
+                cloned = null;
+                shouldUpdate = true;
+            }
+            if (shouldUpdate)
+            {
+                this.fs_config.Position = 0;
+                long writtenLen = 0;
+                using (var jsonWriter = new Utf8JsonWriter(this.fs_config, new JsonWriterOptions() { Indented = false }))
                 {
-                    this.fs_config.Position = 0;
-                    using (var jsonWriter = new Utf8JsonWriter(this.fs_config, new JsonWriterOptions() { Indented = false }))
+                    jsonWriter.WriteStartObject();
+                    if (cloned.HasValue)
                     {
-                        jsonWriter.WriteStartObject();
-                        if (cloned.HasValue)
+                        foreach (var obj in cloned.Value.EnumerateObject())
                         {
-                            foreach (var obj in cloned.Value.EnumerateObject())
+                            if (string.Equals(obj.Name, key, StringComparison.Ordinal))
                             {
-                                if (string.Equals(obj.Name, "dataPath", StringComparison.Ordinal))
-                                {
-                                    jsonWriter.WriteString("dataPath", value);
-                                }
-                                else
-                                {
-                                    obj.WriteTo(jsonWriter);
-                                }
+                                jsonWriter.WriteString(key, value);
+                            }
+                            else
+                            {
+                                obj.WriteTo(jsonWriter);
                             }
                         }
-                        else
-                        {
-                            jsonWriter.WriteString("dataPath", value);
-                        }
-                        jsonWriter.WriteEndObject();
-                        jsonWriter.Flush();
                     }
+                    else
+                    {
+                        jsonWriter.WriteString(key, value);
+                    }
+                    jsonWriter.WriteEndObject();
+                    jsonWriter.Flush();
+                    writtenLen = jsonWriter.BytesCommitted;
                 }
+                this.fs_config.SetLength(writtenLen);
             }
         }
 

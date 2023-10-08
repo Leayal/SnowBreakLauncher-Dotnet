@@ -100,11 +100,11 @@ namespace Leayal.SnowBreakLauncher.Windows
             {
                 AllowMultiple = false,
                 Title = "Browse for existing game client",
-                FileTypeFilter = new List<FilePickerFileType>()
-                    {
-                        new FilePickerFileType("Game Client File") { Patterns = new string[] { "manifest.json", "game.exe" } },
-                        FilePickerFileTypes.All
-                    }
+                FileTypeFilter = new List<FilePickerFileType>(2)
+                {
+                    new FilePickerFileType("Game Client File") { Patterns = new string[] { "manifest.json", "game.exe" } },
+                    FilePickerFileTypes.All
+                }
             };
 
             while (true) // You're stuck here!!!! Actually not, this is for re-entering the dialog when user doesn't click cancel.
@@ -115,7 +115,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                 var path = results[0].TryGetLocalPath();
                 if (string.IsNullOrEmpty(path))
                 {
-                    await this.ShowInfoMsgBox("The file you selected is not a physical file.", "Invalid item selected");
+                    await this.ShowInfoMsgBox("The file you selected is not a local file on your machine.", "Invalid item selected");
                     continue;
                 }
 
@@ -270,7 +270,7 @@ namespace Leayal.SnowBreakLauncher.Windows
             {
                 this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
                 if (ex is not OperationCanceledException)
-                    this.ShowErrorMsgBox(ex);
+                    await this.ShowErrorMsgBox(ex);
             }
             finally
             {

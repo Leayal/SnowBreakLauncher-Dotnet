@@ -1,0 +1,33 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+		MinWidth="250" MinHeight="120" Width="350" Height="120"
+		WindowStartupLocation="CenterOwner" CanResize="False"  ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaToDecorationsHint="True"
+        x:Class="Leayal.SnowBreakLauncher.LinuxWineSettings"
+        Title="Wine Settings">
+	<Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto, Auto,*,Auto">
+		<TextBlock TextAlignment="Center" Text="Wine Settings" Grid.ColumnSpan="3" FontSize="22" Margin="5" />
+		
+		<TextBlock Grid.Row="1" TextAlignment="Right" VerticalAlignment="Center" Text="Wine location" ToolTip.Tip="The path to wine executable. Can be empty path to auto-detect system-installed wine." />
+		<TextBox Grid.Row="1" Grid.Column="1" MaxLines="1" x:Name="TextBox_WinePath" ToolTip.Tip="The path to wine executable. Can be empty path to auto-detect system-installed wine." />
+		<Button Grid.Row="1" Grid.Column="2" ToolTip.Tip="The path to wine executable. Can be empty path to auto-detect system-installed wine." Click="BrowseForWineBtn_Click">
+			<TextBlock TextAlignment="Center" VerticalAlignment="Center" Text="Browse" />
+		</Button>
+		
+		<CheckBox Grid.Row="2" Grid.ColumnSpan="3"  VerticalAlignment="Center" x:Name="CheckBox_WineUnix" ToolTip.Tip="In the nutshell, this is similar to emulate the behavior of File Explorer of Windows operating system. Launch the game directly using File Explorer.">
+			<TextBlock VerticalAlignment="Center" Text="Use a Unix filename" ToolTip.Tip="In the nutshell, this is similar to emulate the behavior of File Explorer of Windows operating system. Launch the game directly using File Explorer." />
+		</CheckBox>
+		
+			
+		<Grid Grid.Row="3" Grid.ColumnSpan="3" ColumnDefinitions="*,*" RowDefinitions="*">
+			<Button VerticalAlignment="Center" HorizontalAlignment="Center"  Click="SaveBtn_Click">
+				<TextBlock TextAlignment="Center" VerticalAlignment="Center" Text="Save" />
+			</Button>
+			<Button Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Click="CloseBtn_Click">
+				<TextBlock TextAlignment="Center" VerticalAlignment="Center" Text="Close" />
+			</Button>
+		</Grid>
+	</Grid>
+</Window>

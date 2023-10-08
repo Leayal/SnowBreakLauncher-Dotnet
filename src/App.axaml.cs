@@ -4,22 +4,35 @@ using Avalonia.Markup.Xaml;
 using Leayal.SnowBreakLauncher.Classes;
 using Leayal.SnowBreakLauncher.Windows;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Runtime.Versioning;
 
 namespace Leayal.SnowBreakLauncher;
 
 public partial class App : Application
 {
     public readonly OfficialJsonConfiguration LauncherConfig;
+    [UnsupportedOSPlatform("windows", "This field is null on Windows as there is no settings regard Windows OS in this class.")]
+    public readonly LeaLauncherConfiguration LeaLauncherConfig;
     internal readonly Program.InstanceController? ProcessInstance;
 
+#pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public App() : base()
+#pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     {
+        var rootDir = AppContext.BaseDirectory;
         // Hardcoded to use the "preference.json" in the same folder.
         // This means after-build:
         // - Either copies the launcher's files to the game's directory (locating its "preference.json" file).
         // - Or copies the file "preference.json" from the official launcher's folder to this launcher's folder, then edit the copied json file to correct the game client's location path.
-        this.LauncherConfig = new OfficialJsonConfiguration(Path.GetFullPath("preference.json", AppContext.BaseDirectory));
+        this.LauncherConfig = new OfficialJsonConfiguration(Path.GetFullPath("preference.json", rootDir));
+
+#pragma warning disable CA1416 // Validate platform compatibility
+#pragma warning disable CS8601 // Possible null reference assignment.
+        this.LeaLauncherConfig = OperatingSystem.IsWindows() ? null : new LeaLauncherConfiguration(Path.GetFullPath("lea-sblauncher.json", rootDir));
+#pragma warning restore CS8601 // Possible null reference assignment.
+#pragma warning restore CA1416 // Validate platform compatibility
     }
 
     internal App(Program.InstanceController processInstance) : this()

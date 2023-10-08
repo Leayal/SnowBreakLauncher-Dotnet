@@ -48,7 +48,7 @@
 				<Button Grid.Column="1" Margin="0" Padding="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" CornerRadius="0,5,5,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
 									x:Name="BtnSettings" Click="BtnSettings_Click" IsEnabled="{Binding #Btn_StartGame.IsEnabled}">
 					<Button.ContextMenu>
-						<ContextMenu Placement="TopEdgeAlignedRight">
+						<ContextMenu Placement="TopEdgeAlignedRight" Initialized="ExtraContextMenu_Initialized">
 							<MenuItem Click="MenuItem_ChangeGameClientDirectory_Click">
 								<MenuItem.Header>
 									<TextBlock Text="Change Game Client Directory" />

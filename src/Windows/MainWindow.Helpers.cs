@@ -51,17 +51,17 @@ namespace Leayal.SnowBreakLauncher.Windows
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void AdjustManualSize(MsBox.Avalonia.Dto.MessageBoxStandardParams msgboxparams, SizeToContent sizeToContent)
+        private static void AdjustManualSize(Window parent, MsBox.Avalonia.Dto.MessageBoxStandardParams msgboxparams, SizeToContent sizeToContent)
         {
             if (sizeToContent == SizeToContent.Manual)
             {
                 int screenWidth = 0, screenHeight = 0;
-                if (OperatingSystem.IsWindows())
+                if (OperatingSystem.IsWindowsVersionAtLeast(5))
                 {
                     screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
                     screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
                 }
-                else if (Screens.ScreenFromVisual(this) is Screen screenArea)
+                else if (parent.Screens.ScreenFromVisual(parent) is Screen screenArea)
                 {
                     screenWidth = screenArea.WorkingArea.Width;
                     screenHeight = screenArea.WorkingArea.Width;
@@ -82,7 +82,9 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
         }
 
-        private Task ShowErrorMsgBox(Exception ex)
+        internal Task ShowErrorMsgBox(Exception ex) => ShowErrorMsgBox(this, ex);
+
+        internal static Task ShowErrorMsgBox(Window parent, Exception ex)
         {
             ArgumentNullException.ThrowIfNull(ex);
 
@@ -104,14 +106,14 @@ namespace Leayal.SnowBreakLauncher.Windows
                 SystemDecorations = SystemDecorations.Full
             };
 
-            AdjustManualSize(msgBoxParams, msgBoxParams.SizeToContent);
+            AdjustManualSize(parent, msgBoxParams, msgBoxParams.SizeToContent);
 
-            return MessageBoxManager.GetMessageBoxStandard(msgBoxParams).ShowWindowDialogAsync(this);
+            return MessageBoxManager.GetMessageBoxStandard(msgBoxParams).ShowWindowDialogAsync(parent);
         }
 
         private Task ShowDialog_LetUserKnowGameDirectoryIsNotSetForThisFunction()
-            => this.ShowYesNoMsgBox("It seems you haven't installed the game yet or the launcher doesn't know where it is." + Environment.NewLine
-                    + "Please install or select the game data location before performing this action.", "Confirmation");
+            => this.ShowInfoMsgBox("It seems you haven't installed the game yet or the launcher doesn't know where it is." + Environment.NewLine
+                    + "Please install or select the game data location before performing this action.", "Information");
 
         private Task<ButtonResult> ShowYesNoCancelMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
         {
@@ -132,12 +134,15 @@ namespace Leayal.SnowBreakLauncher.Windows
                 SystemDecorations = SystemDecorations.Full
             };
 
-            AdjustManualSize(msgboxparams, sizeToContent);
+            AdjustManualSize(this, msgboxparams, sizeToContent);
 
             return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
         }
 
         private Task ShowInfoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Info, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
+            => ShowInfoMsgBox(this, content, title, icon, sizeToContent);
+
+        internal static Task ShowInfoMsgBox(Window parent, string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Info, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
         {
             ArgumentException.ThrowIfNullOrEmpty(content);
             ArgumentException.ThrowIfNullOrEmpty(title);
@@ -157,9 +162,9 @@ namespace Leayal.SnowBreakLauncher.Windows
                 SystemDecorations = SystemDecorations.Full
             };
 
-            AdjustManualSize(msgboxparams, sizeToContent);
+            AdjustManualSize(parent, msgboxparams, sizeToContent);
 
-            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
+            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(parent);
         }
 
         private Task<ButtonResult> ShowYesNoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
@@ -182,7 +187,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                 SystemDecorations = SystemDecorations.Full
             };
 
-            AdjustManualSize(msgboxparams, sizeToContent);
+            AdjustManualSize(this, msgboxparams, sizeToContent);
 
             return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
         }
