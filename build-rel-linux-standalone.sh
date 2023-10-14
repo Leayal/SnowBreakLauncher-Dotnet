@@ -20,4 +20,4 @@ export MSBUILDDISABLENODEREUSE="1"
 
 # As of writing this script, select .NET7 because CsWin32 doesn't generate compatible code with .NET8 SDK v1.0.0-rc1
 # As of writing this, I don't know how to get NativeAOT working on Linux for this. So we're not using AOT compilation for now, using default IL binaries.
-"$DOTNET_CLI" publish -r linux-x64 -f net7.0 --self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -o "$SCRIPT_DIR""/release/linux/standalone" "$SCRIPT_DIR""/src/SnowBreakLauncher.csproj" 
+"$DOTNET_CLI" publish -r linux-x64 -f net8.0 --self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:PublishTrimmed=true -o "$SCRIPT_DIR""/release/linux/standalone" "$SCRIPT_DIR""/src/SnowBreakLauncher.csproj" 

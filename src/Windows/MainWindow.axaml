@@ -5,22 +5,24 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
 		xmlns:controls="using:Leayal.SnowBreakLauncher.Controls"
         mc:Ignorable="d" x:Name="Myself"
-		MinWidth="400" MinHeight="424"
-		Width="400" Height="424" WindowStartupLocation="CenterScreen"
+		MinWidth="400" MinHeight="441"
+		Width="400" Height="441" WindowStartupLocation="CenterScreen"
         x:Class="Leayal.SnowBreakLauncher.Windows.MainWindow"
         Title="SnowBreak: Containment Zone Game Launcher">
 	<Grid ColumnDefinitions="*">
 		<Grid.RowDefinitions>
+			<RowDefinition Height="Auto" />
 			<RowDefinition MinHeight="184" Height="184" />
 			<RowDefinition MinHeight="150" />
 			<RowDefinition Height="Auto" />
 		</Grid.RowDefinitions>
-		<Grid ColumnDefinitions="Auto,*,Auto">
+		<TextBlock Initialized="LauncherVersionString_Initialized" Cursor="Hand" />
+		<Grid Grid.Row="1" ColumnDefinitions="Auto,*,Auto">
 			<Button Content="&lt;" VerticalAlignment="Stretch" HorizontalAlignment="Left" Click="Btn_BannerGoLeft_Click" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
 			<Carousel Grid.Column="1" x:Name="LauncherNews_Banners" />
 			<Button Grid.Column="2" Content="&gt;" VerticalAlignment="Stretch" HorizontalAlignment="Right" Click="Btn_BannerGoRight_Click" VerticalContentAlignment="Center" HorizontalContentAlignment="Center" />
 		</Grid>
-		<Grid Grid.Row="1" Margin="0">
+		<Grid Grid.Row="2" Margin="0">
 			<TabControl Padding="0" Margin="0">
 				<TabItem Header="Events">
 					<controls:LauncherNewsItemListView x:Name="LauncherNews_Events" NewsItemPressed="NewsItem_PointerPressed" />
@@ -33,7 +35,7 @@
 				<Run x:Name="TB_LauncherNews_Banners_PagingCurrent"/><Run Text="/"/><Run x:Name="TB_LauncherNews_Banners_PagingCount"/>
 			</TextBlock>
 		</Grid>
-		<Carousel x:Name="BtnGameStart_Page" Grid.Row="2" Margin="2" MinHeight="50" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+		<Carousel x:Name="BtnGameStart_Page" Grid.Row="3" Margin="2" MinHeight="50" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
 			<!-- For main UI -->
 			<Grid>
 				<Grid.ColumnDefinitions>

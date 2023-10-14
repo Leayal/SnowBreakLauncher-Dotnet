@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media.Imaging;
 using Leayal.SnowBreakLauncher.Classes;
+using Leayal.SnowBreakLauncher.Windows;
 using System;
 
 namespace Leayal.SnowBreakLauncher.Controls;
@@ -48,7 +49,7 @@ public partial class LauncherNewsBanner : UserControl
     {
         try
         {
-            Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(this.url);
+            MainWindow.OpenURLWithDefaultBrowser(this.url);
         }
         catch { }
     }

@@ -20,6 +20,6 @@ REM You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0", or "n
 REM Recommended windows SDKs since they're more optimal.
 
 REM As of writing this script, select .NET7 because CsWin32 doesn't generate compatible code with .NET8 SDK v1.0.0-rc1
-dotnet.exe publish -r win-x64 -f net7.0-windows --no-self-contained -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -c Release -o "release\windows\dependent" "src\SnowBreakLauncher.csproj" 
+dotnet.exe publish -r win-x64 -f net8.0-windows --no-self-contained -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -c Release -o "release\windows\dependent" "src\SnowBreakLauncher.csproj" 
 
 ENDLOCAL

@@ -1,4 +1,11 @@
-﻿using System;
+﻿// .NET 8.0.0-rc2 is another dumb design?
+// So, for some reasons, "NET8_0_OR_GREATER" constant doesn't exist (older .NET8 SDK versions have it)
+// Because they considered, years later, everyone will have time and be happy to read god-know-when source code and 'find and replace' constant "NET8_0" to "NET8_0_OR_GREATER" without having to debug.
+#if NET8_0
+#define NET8_0_OR_GREATER
+#endif
+
+using System;
 using System.Collections.Concurrent;
 #if NET8_0_OR_GREATER
 using System.Collections.Frozen;
@@ -58,7 +65,11 @@ public readonly struct GameClientManifestData : IDisposable
     internal class FileStreamBroker : IDisposable
     {
         private FileStream? fs;
+#if NET8_0_OR_GREATER
+        private object locker;
+#else
         private readonly object locker;
+#endif
         private bool _created, _mapped;
         private MemoryMappedFile? memMappedFile;
         private readonly string filepath;
@@ -103,7 +114,11 @@ public readonly struct GameClientManifestData : IDisposable
 
         private void OpenOrCreate(out FileStream writeStream)
         {
+#if NET8_0_OR_GREATER
+            writeStream = LazyInitializer.EnsureInitialized<FileStream>(ref this.fs, ref this._created, ref this.locker, this.FactoryFS);
+#else
             writeStream = LazyInitializer.EnsureInitialized<FileStream>(ref this.fs, ref this._created, ref Unsafe.AsRef(in this.locker), this.FactoryFS);
+#endif
         }
 
         private bool TryGetMap([NotNullWhen(true)] out MemoryMappedFile? map)
@@ -113,8 +128,11 @@ public readonly struct GameClientManifestData : IDisposable
                 map = null;
                 return false;
             }
-            
+#if NET8_0_OR_GREATER
+            map = LazyInitializer.EnsureInitialized<MemoryMappedFile>(ref this.memMappedFile, ref this._mapped, ref this.locker, this.FactoryMap);
+#else
             map = LazyInitializer.EnsureInitialized<MemoryMappedFile>(ref this.memMappedFile, ref this._mapped, ref Unsafe.AsRef(in this.locker), this.FactoryMap);
+#endif
             try
             {
                 var handle = map.SafeMemoryMappedFileHandle;

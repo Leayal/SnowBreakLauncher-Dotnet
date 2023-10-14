@@ -10,7 +10,7 @@ public partial class LauncherNewsItemListView : UserControl
         InitializeComponent();
     }
 
-    public System.Collections.Generic.IReadOnlyList<NewsInlineTextWrapper> ItemsSource
+    public System.Collections.Generic.IReadOnlyList<NewsInlineTextWrapper>? ItemsSource
     {
         set
         {

@@ -243,7 +243,14 @@ public abstract class ApplicationController : IDisposable
             clientPipe.Write(span);
             try
             {
-                clientPipe.WaitForPipeDrain();
+                if (OperatingSystem.IsWindows())
+                {
+                    clientPipe.WaitForPipeDrain();
+                }
+                else
+                {
+                    // I don't know the alternative for non-Windows
+                }
             }
             catch (ObjectDisposedException) { }
             catch (IOException) { }

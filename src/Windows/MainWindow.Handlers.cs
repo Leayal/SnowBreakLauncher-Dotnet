@@ -10,16 +10,15 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using Leayal.SnowBreakLauncher.Controls;
-using Avalonia.Threading;
 using Avalonia.Controls;
 using System.Threading;
 using Avalonia.Platform.Storage;
 using System.IO;
-using Avalonia;
 using Leayal.Shared.Windows;
 using System.Diagnostics;
-using Leayal.SnowBreakLauncher.Classes;
 using System.Runtime.Versioning;
+using System.Reflection;
+using Avalonia.Threading;
 
 namespace Leayal.SnowBreakLauncher.Windows
 {
@@ -29,8 +28,31 @@ namespace Leayal.SnowBreakLauncher.Windows
         protected override async void OnLoaded(RoutedEventArgs e)
         {
             base.OnLoaded(e);
-            
+
             await Task.WhenAll(this.AfterLoaded_Btn_GameStart(), this.AfterLoaded_LauncherNews());
+            _ = Task.Factory.StartNew(this.PeriodicallyRefreshNews, TaskCreationOptions.LongRunning);
+        }
+
+        private async Task PeriodicallyRefreshNews()
+        {  
+            try
+            {
+                using (var timer = new PeriodicTimer(TimeSpan.FromHours(8)))
+                {
+                    await timer.WaitForNextTickAsync();
+                    var dispatcher = Dispatcher.UIThread;
+                    if (dispatcher.CheckAccess())
+                    {
+                        // Can't be here anyway.
+                        await this.AfterLoaded_LauncherNews();
+                    }
+                    else
+                    {
+                        await dispatcher.InvokeAsync(this.AfterLoaded_LauncherNews);
+                    }
+                }
+            }
+            catch { }
         }
 
         private void ExtraContextMenu_Initialized(object? sender, EventArgs e)
@@ -49,6 +71,49 @@ namespace Leayal.SnowBreakLauncher.Windows
         {
             var dialog = new LinuxWineSettings();
             dialog.ShowDialog(this);
+        }
+
+        private void LauncherVersionString_Initialized(object? sender, EventArgs e)
+        {
+            if (sender is TextBlock textBlock)
+            {
+                var lines = textBlock.Inlines;
+                if (lines == null)
+                {
+                    lines = new Avalonia.Controls.Documents.InlineCollection();
+                    textBlock.Inlines = lines;
+                }
+                lines.AddRange(new Avalonia.Controls.Documents.Run[]
+                {
+                    new Avalonia.Controls.Documents.Run("Launcher version: "),
+                    new Avalonia.Controls.Documents.Run(Assembly.GetEntryAssembly()?.GetName().Version?.ToString(3) ?? "Unknown version") { TextDecorations = Avalonia.Media.TextDecorations.Underline },
+                    new Avalonia.Controls.Documents.Run(" (Click to open releases page)"),
+                });
+                Clickable.OnClick(textBlock, LauncherVersionString_Clicked);
+            }
+        }
+
+        private static void LauncherVersionString_Clicked(TextBlock sender, RoutedEventArgs e)
+        {
+            OpenURLWithDefaultBrowser("https://github.com/Leayal/SnowBreakLauncher-Dotnet/releases/latest");
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal static void OpenURLWithDefaultBrowser(string url)
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                // We really need this on Windows to avoid starting a new web browser process as Admin, in case this launcher is run as Admin.
+                WindowsExplorerHelper.OpenUrlWithDefaultBrowser(url);
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo(url)
+                {
+                    UseShellExecute = true,
+                    Verb = "open"
+                })?.Dispose();
+            }
         }
 
         private async Task AfterLoaded_LauncherNews()
@@ -74,24 +139,25 @@ namespace Leayal.SnowBreakLauncher.Windows
 
             using (var newsFeed = await httpClient.GetLauncherNewsAsync())
             {
-                // var list_notices = AddItems(newsFeed.Notices, newsFeed.NoticeCount);
-                // var list_events = AddItems(newsFeed.Events, newsFeed.EventCount);
-
-                this.LauncherNews_Events.ItemsSource = ToClassItems(newsFeed.Events, newsFeed.EventCount);
-                this.LauncherNews_Notices.ItemsSource = ToClassItems(newsFeed.Notices, newsFeed.NoticeCount);
+                var events = ToClassItems(newsFeed.Events, newsFeed.EventCount);
+                this.LauncherNews_Events.ItemsSource = events.Count == 0 ? null : events;
+                var notices = ToClassItems(newsFeed.Notices, newsFeed.NoticeCount);
+                this.LauncherNews_Notices.ItemsSource = notices.Count == 0 ? null : notices;
 
                 var listCount_banners = newsFeed.BannerCount;
                 var list_banners = (listCount_banners == -1 ? new List<LauncherNewsBanner>() : new List<LauncherNewsBanner>(listCount_banners));
                 foreach (var banner in newsFeed.Banners)
                 {
                     if (string.IsNullOrWhiteSpace(banner.img) || string.IsNullOrWhiteSpace(banner.link)) continue;
-                    
-                    this.LauncherNews_Banners.Items.Add(new LauncherNewsBanner(banner.img, banner.link)
+
+                    list_banners.Add(new LauncherNewsBanner(banner.img, banner.link)
                     {
                         HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
                         VerticalAlignment = Avalonia.Layout.VerticalAlignment.Stretch
                     });
                 }
+
+                this.LauncherNews_Banners.ItemsSource = list_banners.Count == 0 ? null : list_banners;
             }
 
             this.carouselAutoplay.StartAutoplay();
@@ -103,19 +169,7 @@ namespace Leayal.SnowBreakLauncher.Windows
             {
                 try
                 {
-                    if (OperatingSystem.IsWindows())
-                    {
-                        // We really need this on Windows to avoid starting a new web browser process as Admin, in case this launcher is run as Admin.
-                        Leayal.Shared.Windows.WindowsExplorerHelper.OpenUrlWithDefaultBrowser(obj.link);
-                    }
-                    else
-                    {
-                        Process.Start(new ProcessStartInfo(obj.link)
-                        {
-                            UseShellExecute = true,
-                            Verb = "open"
-                        })?.Dispose();
-                    }
+                    OpenURLWithDefaultBrowser(obj.link);
                 }
                 catch { }
             }

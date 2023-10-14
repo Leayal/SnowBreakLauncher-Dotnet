@@ -3,7 +3,6 @@ using System.IO;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
-using Shell32 = global::Windows.Win32.UI.Shell;
 using System.Reflection;
 using System.Runtime.Versioning;
 
@@ -89,6 +88,23 @@ namespace Leayal.Shared.Windows
             }
         }
 
+        /// <summary>Contains folder view information.</summary>
+		/// <remarks>These settings assume a particular user interface, which the Shell's folder view has. A Shell extension can use these settings if they apply to the view implemented by the extension.</remarks>
+        internal partial struct FOLDERSETTINGS
+        {
+            /// <summary>
+            /// <para>Type: <b>UINT</b> Folder view mode. One of the <a href="https://docs.microsoft.com/windows/desktop/api/shobjidl_core/ne-shobjidl_core-folderviewmode">FOLDERVIEWMODE</a> values.</para>
+            /// <para><see href="https://learn.microsoft.com/windows/win32/api/shobjidl_core/ns-shobjidl_core-foldersettings#members">Read more on docs.microsoft.com</see>.</para>
+            /// </summary>
+            internal uint ViewMode;
+
+            /// <summary>
+            /// <para>Type: <b>UINT</b> A set of flags that indicate the options for the folder. This can be zero or a combination of the <a href="https://docs.microsoft.com/windows/desktop/api/shobjidl_core/ne-shobjidl_core-folderflags">FOLDERFLAGS</a> values.</para>
+            /// <para><see href="https://learn.microsoft.com/windows/win32/api/shobjidl_core/ns-shobjidl_core-foldersettings#members">Read more on docs.microsoft.com</see>.</para>
+            /// </summary>
+            internal uint fFlags;
+        }
+
         /// <summary>
         /// Interop definitions
         /// </summary>
@@ -151,6 +167,64 @@ namespace Leayal.Shared.Windows
             void SetToolbarItems(IntPtr lpButtons, UInt32 nButtons, UInt32 uFlags);
         }
 
+        /// <summary>The RECT structure defines a rectangle by the coordinates of its upper-left and lower-right corners.</summary>
+		/// <remarks>The RECT structure is identical to the <a href="https://docs.microsoft.com/windows/desktop/api/windef/ns-windef-rectl">RECTL</a> structure.</remarks>
+        internal partial struct RECT
+        {
+            /// <summary>Specifies the <i>x</i>-coordinate of the upper-left corner of the rectangle.</summary>
+            internal int left;
+
+            /// <summary>Specifies the <i>y</i>-coordinate of the upper-left corner of the rectangle.</summary>
+            internal int top;
+
+            /// <summary>Specifies the <i>x</i>-coordinate of the lower-right corner of the rectangle.</summary>
+            internal int right;
+
+            /// <summary>Specifies the <i>y</i>-coordinate of the lower-right corner of the rectangle.</summary>
+            internal int bottom;
+
+            internal RECT(global::System.Drawing.Rectangle value) :
+this(value.Left, value.Top, value.Right, value.Bottom)
+            {
+            }
+
+            internal RECT(global::System.Drawing.Point location, global::System.Drawing.Size size) :
+this(location.X, location.Y, unchecked(location.X + size.Width), unchecked(location.Y + size.Height))
+            {
+            }
+
+            internal RECT(int left, int top, int right, int bottom)
+
+            {
+                this.left = left;
+                this.top = top;
+                this.right = right;
+                this.bottom = bottom;
+            }
+
+
+            internal static RECT FromXYWH(int x, int y, int width, int height) =>
+new RECT(x, y, unchecked(x + width), unchecked(y + height));
+
+            internal readonly int Width => unchecked(this.right - this.left);
+
+            internal readonly int Height => unchecked(this.bottom - this.top);
+
+            internal readonly bool IsEmpty => this.left == 0 && this.top == 0 && this.right == 0 && this.bottom == 0;
+
+            internal readonly int X => this.left;
+
+            internal readonly int Y => this.top;
+
+            internal readonly global::System.Drawing.Size Size => new global::System.Drawing.Size(this.Width, this.Height);
+
+            public static implicit operator global::System.Drawing.Rectangle(RECT value) => new global::System.Drawing.Rectangle(value.left, value.top, value.Width, value.Height);
+
+            public static implicit operator global::System.Drawing.RectangleF(RECT value) => new global::System.Drawing.RectangleF(value.left, value.top, value.Width, value.Height);
+
+            public static implicit operator RECT(global::System.Drawing.Rectangle value) => new RECT(value);
+        }
+
         [ComImport]
         [Guid("000214E3-0000-0000-C000-000000000046")]
         [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
@@ -179,13 +253,13 @@ namespace Leayal.Shared.Windows
 
             /// <summary>Creates a view window.</summary>
             /// <remarks>This can be either the right pane of Explorer or the client window of a folder window.</remarks>
-            void CreateViewWindow([In, MarshalAs(UnmanagedType.Interface)] IShellView? previousShellView, [In] ref Shell32.FOLDERSETTINGS folderSetting, [In] IShellBrowser shellBrowser, [Out] out global::Windows.Win32.Foundation.RECT bounds, [Out] out IntPtr handleOfCreatedWindow);
+            void CreateViewWindow([In, MarshalAs(UnmanagedType.Interface)] IShellView? previousShellView, [In] ref FOLDERSETTINGS folderSetting, [In] IShellBrowser shellBrowser, [Out] out RECT bounds, [Out] out IntPtr handleOfCreatedWindow);
 
             /// <summary>Destroys the view window.</summary>
             void DestroyViewWindow();
 
             /// <summary>Retrieves the current folder settings.</summary>
-            void GetCurrentInfo(ref Shell32.FOLDERSETTINGS pfs);
+            void GetCurrentInfo(ref FOLDERSETTINGS pfs);
 
             /// <summary>Allows the view to add pages to the Options property sheet from the View menu.</summary>
             void AddPropertySheetPages([In, MarshalAs(UnmanagedType.U4)] uint reserved, [In] ref IntPtr functionPointer, [In] IntPtr lparam);
@@ -376,7 +450,7 @@ namespace Leayal.Shared.Windows
         /// <exception cref="DirectoryNotFoundException">The path does not exist or is a file.</exception>
         public static void SelectPathInExplorer(string path, bool waiting = false)
         {
-            if (!FileSystem.PathExists(path)) throw new DirectoryNotFoundException();
+            if (!Directory.Exists(path)) throw new DirectoryNotFoundException();
 
             if (ShellExecuteProcessUnElevated(ExplorerExe, $"/select,\"{path}\"")) return;
 

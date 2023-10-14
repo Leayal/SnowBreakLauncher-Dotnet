@@ -7,7 +7,6 @@ using System.Management;
 using Leayal.Shared.Windows;
 using System.Diagnostics;
 using System.Threading;
-using System.Globalization;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
 using System.Runtime.CompilerServices;

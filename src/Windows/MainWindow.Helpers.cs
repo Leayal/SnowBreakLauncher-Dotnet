@@ -8,7 +8,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using MsBox.Avalonia;
-using Windows.Win32;
 using MsBox.Avalonia.Enums;
 using System.Threading.Tasks;
 using Avalonia.Controls;
@@ -58,8 +57,8 @@ namespace Leayal.SnowBreakLauncher.Windows
                 int screenWidth = 0, screenHeight = 0;
                 if (OperatingSystem.IsWindowsVersionAtLeast(5))
                 {
-                    screenWidth = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
-                    screenHeight = PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+                    screenWidth = NativeMethods.GetSystemMetrics(NativeMethods.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
+                    screenHeight = NativeMethods.GetSystemMetrics(NativeMethods.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
                 }
                 else if (parent.Screens.ScreenFromVisual(parent) is Screen screenArea)
                 {

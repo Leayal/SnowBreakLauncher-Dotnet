@@ -1,17 +1,18 @@
 # SnowBreakLauncher-Dotnet
- A custom launcher for [SnowBreak: Containment Zone](https://snowbreak.amazingseasun.com/), written in C# of .NET7 (can target .NET8 to get its improvement).
+ A custom launcher for [SnowBreak: Containment Zone](https://snowbreak.amazingseasun.com/), written in C# of .NET8.
  
 
 # Notes
  Currently, this is a WIP: The launcher can check for game's update, install game client, update the game client and start the game.
- But the launcher has not self-update function yet.
+ 
+ The launcher has no self-update function. In order to update the launcher, you will need to re-download the launcher by yourself and overwrite the old files.
  
  
 # Usage:
 ### You can download the binaries and use it in [Release page](../../releases/latest)
 ### Or you can build the whole thing from source:
 - Requirements:
-  - [.NET 7 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/7.0):
+  - [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0):
     - You can install it into your system.
     - **Or** deploy the SDK binaries into `sdk` directory. The directory is at the project's root, if the directory doesn't exist, you can create it. [(Check the batch script for insight)](build-rel-win-standalone.bat#L10)
 - After installing the SDK, you can compile by running one of the build script files (if you're building it for personal use, I recommend building dependent one):
@@ -29,21 +30,12 @@
 - Scripts with `rel` means building `release` binaries (meant to be distributed). `rel-<OS>` means release to be run on the target OS, for instance, `rel-linux` means binaries are for running on Linux-based OSs.
 ### The .NET SDK includes all runtimes so you don't need to install .NET Runtime if you already have the SDK installed.
 
-### The source is also taking some .NET8's improvement in, in case you're targeting .NET8. To build with .NET8 base:
-- You can install or deploy [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) (the same like steps above)
-- Edit the build scripts that you're gonna use:
-  - [build-rel-win-standalone.bat](build-rel-win-standalone.bat#L23): Edit `-f net7.0-windows` to `-f net8.0-windows` to target .NET8 SDK and build .NET8-based binaries.
-  - [build-rel-win-dependent.bat](build-rel-win-dependent.bat#L23): Same as `build-rel-win-standalone.bat` above (Edit `-f net7.0-windows` to `-f net8.0-windows` to target .NET8 SDK and build .NET8-based binaries).
-  - [crossbuild-rel-linux-standalone.bat](crossbuild-rel-linux-standalone.bat#L21): Edit `-f net7.0` to `-f net8.0` to target .NET8 SDK and build .NET8-based binaries.
-  - [crossbuild-rel-linux-dependant.bat](crossbuild-rel-linux-dependant.bat#L21): Same as `crossbuild-rel-linux-standalone.bat` above (Edit `-f net7.0` to `-f net8.0` to target .NET8 SDK and build .NET8-based binaries).
-  - [build-rel-linux-standalone.sh](build-rel-linux-standalone.sh#L23): Same as `crossbuild-rel-linux-standalone.bat` above.
-  - [build-rel-linux-dependent.sh](build-rel-linux-dependent.sh#L23): Same as `crossbuild-rel-linux-standalone.bat` above.
-
 # Development
 As of writing this, I'm using `Visual Studio 2022` IDE with. However, you can use any IDEs you like as long as it can deal with .NET C#.
 
 
 # Third-party libraries
-- [CsWin32](https://github.com/Microsoft/CsWin32): A source code generator which generates P/Invoke function "easily" (as sometimes you have to deal with pointers and aliased types).
 - [Avalonia](https://github.com/AvaloniaUI/Avalonia): A cross-platform UI framework.
 - [MessageBox.Avalonia](https://github.com/AvaloniaCommunity/MessageBox.Avalonia): MessageBox for [Avalonia](https://github.com/AvaloniaUI/Avalonia).
+## Credits
+- Thanks for the generated P/Invoke code of [CsWin32](https://github.com/Microsoft/CsWin32): While this project no longer directly use the CsWin32 code generator, the already generated code are still being used.

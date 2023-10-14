@@ -20,4 +20,4 @@ export MSBUILDDISABLENODEREUSE="1"
 # You can also switch to .NET8 SDK by changing the "net7.0" to "net8.0" value of the "-f" argument
 
 # As of writing this script, select .NET7 because CsWin32 doesn't generate compatible code with .NET8 SDK v1.0.0-rc1
-"$DOTNET_CLI" publish -r linux-x64 -f net7.0 --no-self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -o "$SCRIPT_DIR""/release/linux/dependent" "$SCRIPT_DIR""/src/SnowBreakLauncher.csproj" 
+"$DOTNET_CLI" publish -r linux-x64 -f net8.0 --no-self-contained -c Release -p:PublishAot=false -p:PublishReadyToRun=true -p:PublishSingleFile=true -o "$SCRIPT_DIR""/release/linux/dependent" "$SCRIPT_DIR""/src/SnowBreakLauncher.csproj" 

@@ -1,10 +1,15 @@
-﻿using Leayal.SnowBreakLauncher.Classes;
+﻿// .NET 8.0.0-rc2 is another dumb design?
+// So, for some reasons, "NET8_0_OR_GREATER" constant doesn't exist (older .NET8 SDK versions have it)
+// Because they considered, years later, everyone will have time and be happy to read god-know-when source code and 'find and replace' constant "NET8_0" to "NET8_0_OR_GREATER" without having to debug.
+#if NET8_0
+#define NET8_0_OR_GREATER
+#endif
+
+using Leayal.SnowBreakLauncher.Classes;
 using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
