@@ -35,7 +35,6 @@ As of writing this, I'm using `Visual Studio 2022` IDE with. However, you can us
 
 
 # Third-party libraries
+- [CsWin32](https://github.com/Microsoft/CsWin32): A source code generator which generates Windows platform's P/Invoke functions "easily" (as sometimes you have to deal with pointers, aliased types and their haywires).
 - [Avalonia](https://github.com/AvaloniaUI/Avalonia): A cross-platform UI framework.
 - [MessageBox.Avalonia](https://github.com/AvaloniaCommunity/MessageBox.Avalonia): MessageBox for [Avalonia](https://github.com/AvaloniaUI/Avalonia).
-## Credits
-- Thanks for the generated P/Invoke code of [CsWin32](https://github.com/Microsoft/CsWin32): While this project no longer directly use the CsWin32 code generator, the already generated code are still being used.

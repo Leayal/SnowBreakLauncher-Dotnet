@@ -30,6 +30,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="NativeMethods.txt" />
     <None Remove="snowbreak.ico" />
   </ItemGroup>
 
@@ -43,9 +44,9 @@
 
   <ItemGroup>
 	<!--I decide to ditch this thing, favoring .NET8-->
-	<!--<PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.49-beta">
+	<PackageReference Include="Microsoft.Windows.CsWin32" Version="0.3.49-beta">
      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>-->
+    </PackageReference>
     <PackageReference Condition="!$(DefineConstants.Contains('NO_WMI'))" Include="System.Management" Version="7.0.2" />
     <PackageReference Include="Avalonia" Version="11.0.4" />
     <PackageReference Include="Avalonia.Desktop" Version="11.0.4" />
@@ -64,5 +65,9 @@
 
   <ItemGroup>
     <UpToDateCheckInput Remove="Windows\LinuxWineSettings.axaml" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AdditionalFiles Include="NativeMethods.txt" />
   </ItemGroup>
 </Project>

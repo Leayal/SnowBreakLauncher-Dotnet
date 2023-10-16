@@ -325,18 +325,7 @@ sealed class GameProcessManager : IDisposable
 #endif
 
     /// <summary>Attempts to start the game.</summary>
-    public ValueTask StartGame()
-    {
-        if (OperatingSystem.IsWindows() && UacHelper.IsCurrentProcessElevated)
-        {
-            this.Internal_StartGame();
-            return ValueTask.CompletedTask;
-        }
-        else
-        {
-            return new ValueTask(Task.Run(this.Internal_StartGame));
-        }
-    }
+    public Task StartGame() => Task.Run(this.Internal_StartGame);
 
     /// <summary>Tries get Wine version, if it is installed on the machine.</summary>
     /// <param name="wineVersionString">The version string which was returned by "wine --version" command line.</param>

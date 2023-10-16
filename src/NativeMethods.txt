@@ -1,0 +1,13 @@
+﻿// ProcessInfoHelper
+QueryFullProcessImageName
+GetProcessId
+
+// UAC Helper
+OpenProcess
+OpenProcessToken
+GetTokenInformation
+TOKEN_LINKED_TOKEN
+TOKEN_ELEVATION_TYPE
+
+GetSystemMetrics
+SetForegroundWindow

@@ -28,7 +28,7 @@ namespace Leayal.Shared.Windows
             if (OperatingSystem.IsWindows())
                 return Win.RegisterProcessExitCallback(process, callback, cancellationToken, immediatelyInvokeCallbackIfAlreadyExited);
             else
-                return Unix.RegisterProcessExitCallback(process, callback, cancellationToken, immediatelyInvokeCallbackIfAlreadyExited);
+                return Linux.RegisterProcessExitCallback(process, callback, cancellationToken, immediatelyInvokeCallbackIfAlreadyExited);
         }
 
         /// <summary>Retrieves the full name of the executable image for the specified process.</summary>
@@ -40,7 +40,7 @@ namespace Leayal.Shared.Windows
             if (OperatingSystem.IsWindows())
                 return Win.QueryFullProcessImageName(process, Win.QueryProcessNameType.Win32, 4096, true);
             else
-                return Unix.GetProcessInfo(process, "exe");
+                return Linux.GetProcessInfo(process, "exe");
         }
     }
 }

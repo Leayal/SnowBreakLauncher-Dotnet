@@ -7,6 +7,8 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Principal;
+using MSWin32 = global::Windows.Win32;
+using PInvoke = global::Windows.Win32.PInvoke;
 
 namespace Leayal.Shared.Windows
 {
@@ -43,10 +45,17 @@ namespace Leayal.Shared.Windows
 
         static UacHelper()
         {
-            using (var proc = Process.GetCurrentProcess())
+            if (OperatingSystem.IsWindows())
             {
-                // Don't worry about Handle's access right for the current process. Full access right~
-                IsCurrentProcessElevated = IsProcessElevated(proc.SafeHandle);
+                using (var proc = Process.GetCurrentProcess())
+                {
+                    // Don't worry about Handle's access right for the current process. Full access right~
+                    IsCurrentProcessElevated = IsProcessElevated(proc.SafeHandle);
+                }
+            }
+            else
+            {
+                IsCurrentProcessElevated = (NativeMethods.geteuid() == 0);
             }
         }
 
@@ -67,12 +76,12 @@ namespace Leayal.Shared.Windows
                 }
                 else
                 {
-                    var handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, Convert.ToUInt32(process.Id));
-                    if (Unsafe.IsNullRef(ref handle))
+                    var handle = PInvoke.OpenProcess(MSWin32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, Convert.ToUInt32(process.Id));
+                    if (handle.IsNull)
                     {
                         throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                     }
-                    hProcess = new SafeProcessHandle(handle, true);
+                    hProcess = new SafeProcessHandle(handle.Value, true);
                     // hProcess = OpenProcess(QueryLimitedInformation, false, process.Id);
                     if (hProcess.IsInvalid)
                     {
@@ -84,12 +93,12 @@ namespace Leayal.Shared.Windows
             catch (System.ComponentModel.Win32Exception ex) when (ex.HResult == -2147467259)
             {
                 // Should be access denied. So we open by our own with "QueryLimited" access right.
-                var handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, Convert.ToUInt32(process.Id));
-                if (Unsafe.IsNullRef(ref handle))
+                var handle = PInvoke.OpenProcess(MSWin32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, Convert.ToUInt32(process.Id));
+                if (handle.IsNull)
                 {
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                 }
-                hProcess = new SafeProcessHandle(handle, true);
+                hProcess = new SafeProcessHandle(handle.Value, true);
                 if (hProcess.IsInvalid)
                 {
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
@@ -109,8 +118,6 @@ namespace Leayal.Shared.Windows
             }
         }
 
-     
-
         /// <summary>Gets a boolean which determines whether the specified process is elevated.</summary>
         /// <param name="processHandle">The handle to a process.</param>
         /// <returns><see langword="true"/> if the process is elevated. Otherwise, <see langword="false"/>.</returns>
@@ -123,27 +130,27 @@ namespace Leayal.Shared.Windows
             if (processHandle.IsClosed || processHandle.IsInvalid) throw new ObjectDisposedException(nameof(processHandle));
             if (IsUacEnabled)
             {
-                if (!NativeMethods.OpenProcessToken(processHandle, NativeMethods.TOKEN_ACCESS_MASK.TOKEN_READ, out var tokenHandle))
+                if (!PInvoke.OpenProcessToken(processHandle, MSWin32.Security.TOKEN_ACCESS_MASK.TOKEN_READ, out var tokenHandle))
                 {
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                     // throw new ApplicationException("Could not get process token. Win32 Error Code: " + Marshal.GetLastWin32Error());
                 }
 
-                var elevationResult = NativeMethods.TOKEN_ELEVATION_TYPE.TokenElevationTypeDefault;
-                const uint elevationResultSize = sizeof(NativeMethods.TOKEN_ELEVATION_TYPE);
+                MSWin32.Security.TOKEN_ELEVATION_TYPE elevationResult = MSWin32.Security.TOKEN_ELEVATION_TYPE.TokenElevationTypeDefault;
+                const uint elevationResultSize = sizeof(MSWin32.Security.TOKEN_ELEVATION_TYPE);
                 try
                 {
                     uint returnedSize = 0;
                     bool success;
                     unsafe
-                    {  
-                        success = NativeMethods.GetTokenInformation(in tokenHandle, NativeMethods.TOKEN_INFORMATION_CLASS.TokenElevationType, Unsafe.AsPointer(ref elevationResult), elevationResultSize, out returnedSize);
+                    {
+                        success = PInvoke.GetTokenInformation(tokenHandle, MSWin32.Security.TOKEN_INFORMATION_CLASS.TokenElevationType, Unsafe.AsPointer(ref elevationResult), elevationResultSize, out returnedSize);
                     }
-                    
+
                     if (success)
                     {
                         // elevationResult = (TOKEN_ELEVATION_TYPE)Marshal.ReadInt32(elevationTypePtr);
-                        bool isProcessAdmin = elevationResult == NativeMethods.TOKEN_ELEVATION_TYPE.TokenElevationTypeFull;
+                        bool isProcessAdmin = elevationResult == MSWin32.Security.TOKEN_ELEVATION_TYPE.TokenElevationTypeFull;
                         return isProcessAdmin;
                     }
                     else

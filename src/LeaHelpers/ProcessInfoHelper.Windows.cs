@@ -2,10 +2,11 @@
 using System.Diagnostics;
 using System.Buffers;
 using Microsoft.Win32.SafeHandles;
+using MSWin32 = global::Windows.Win32;
+using PInvoke = global::Windows.Win32.PInvoke;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Runtime.Versioning;
-using Leayal.SnowBreakLauncher;
 
 namespace Leayal.Shared.Windows
 {
@@ -19,12 +20,12 @@ namespace Leayal.Shared.Windows
 
             internal static SafeProcessHandle OpenProcessForQueryLimitedInfo(uint processId)
             {
-                var handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, in processId);
-                if (Unsafe.IsNullRef(ref handle))
+                var handle = PInvoke.OpenProcess(MSWin32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+                if (handle.IsNull)
                 {
                     return InvalidHandle;
                 }
-                return new SafeProcessHandle(handle, true);
+                return new SafeProcessHandle(handle.Value, true);
             }
 
             /// <summary>Registers a callback which will be invoked when the process exits.</summary>
@@ -49,12 +50,12 @@ namespace Leayal.Shared.Windows
                 }
 
                 uint procId = unchecked((uint)process.Id);
-                var handle = NativeMethods.OpenProcess(NativeMethods.PROCESS_ACCESS_RIGHTS.PROCESS_SYNCHRONIZE, false, in procId);
-                if (Unsafe.IsNullRef(ref handle))
+                var handle = PInvoke.OpenProcess(MSWin32.System.Threading.PROCESS_ACCESS_RIGHTS.PROCESS_SYNCHRONIZE, false, procId);
+                if (handle.IsNull)
                 {
                     return false;
                 }
-                var waitHandle = new ProcessWaitHandle(new SafeWaitHandle(handle, true));
+                var waitHandle = new ProcessWaitHandle(new SafeWaitHandle(handle.Value, true));
                 var registeredWaitHandle = ThreadPool.RegisterWaitForSingleObject(waitHandle, new WaitOrTimerCallback(ProcessWaitedForExit), new Tuple<ProcessWaitHandle, Process, uint, ProcessExitCallback>(waitHandle, process, procId, callback), Timeout.Infinite, true);
                 cancellationToken.Register(obj =>
                 {
@@ -174,7 +175,7 @@ namespace Leayal.Shared.Windows
             /// <param name="buffer">The minimum number of character buffer size to pre-allocate to fetch the path string. Default size is 4096.</param>
             /// <returns>A string contains full path to the executable file which started the process. Or <see langword="null"/> on failures.</returns>
             public static string? QueryFullProcessImageName(SafeProcessHandle processHandle, QueryProcessNameType nameType, int buffer = 4096)
-                => QueryFullProcessImageName(processHandle, UacHelper.IsCurrentProcessElevated ? 0 : NativeMethods.GetProcessId(in processHandle), nameType, buffer);
+                => QueryFullProcessImageName(processHandle, UacHelper.IsCurrentProcessElevated ? 0 : PInvoke.GetProcessId(processHandle), nameType, buffer);
 
             private static string? QueryFullProcessImageName(SafeProcessHandle processHandle, uint processId, QueryProcessNameType dwNameType, int buffer)
             {
@@ -187,7 +188,7 @@ namespace Leayal.Shared.Windows
                     {
                         fixed (char* c = ch)
                         {
-                            isSuccess = NativeMethods.QueryFullProcessImageName(in processHandle, Unsafe.As<QueryProcessNameType, NativeMethods.PROCESS_NAME_FORMAT>(ref dwNameType), c, ref bufferLength);
+                            isSuccess = PInvoke.QueryFullProcessImageName(processHandle, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), new MSWin32.Foundation.PWSTR(c), ref bufferLength);
                         }
                     }
                     if (isSuccess)
@@ -207,7 +208,7 @@ namespace Leayal.Shared.Windows
                             {
                                 fixed (char* c = ch)
                                 {
-                                    isSuccess = NativeMethods.QueryFullProcessImageName(hProcess, Unsafe.As<QueryProcessNameType, NativeMethods.PROCESS_NAME_FORMAT>(ref dwNameType), c, ref bufferLength);
+                                    isSuccess = PInvoke.QueryFullProcessImageName(hProcess, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), new MSWin32.Foundation.PWSTR(c), ref bufferLength);
                                 }
                             }
                             if (isSuccess)

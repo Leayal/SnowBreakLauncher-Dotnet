@@ -57,8 +57,8 @@ namespace Leayal.SnowBreakLauncher.Windows
                 int screenWidth = 0, screenHeight = 0;
                 if (OperatingSystem.IsWindowsVersionAtLeast(5))
                 {
-                    screenWidth = NativeMethods.GetSystemMetrics(NativeMethods.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
-                    screenHeight = NativeMethods.GetSystemMetrics(NativeMethods.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
+                    screenWidth = global::Windows.Win32.PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CXVIRTUALSCREEN);
+                    screenHeight = global::Windows.Win32.PInvoke.GetSystemMetrics(global::Windows.Win32.UI.WindowsAndMessaging.SYSTEM_METRICS_INDEX.SM_CYVIRTUALSCREEN);
                 }
                 else if (parent.Screens.ScreenFromVisual(parent) is Screen screenArea)
                 {

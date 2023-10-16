@@ -22,14 +22,14 @@ namespace Leayal.Shared.Windows
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool SetForegroundWindow(Window window) => SetForegroundWindowImpl(window);
 
-        private static readonly Func<Window, bool> SetForegroundWindowImpl = OperatingSystem.IsWindows() ? SetForegroundWindowImpl_Win : new Func<Window, bool>(delegate { return false; });
+        private static readonly Func<Window, bool> SetForegroundWindowImpl = OperatingSystem.IsWindowsVersionAtLeast(5) ? SetForegroundWindowImpl_Win : new Func<Window, bool>(delegate { return false; });
 
-        [SupportedOSPlatform("windows")]
+        [SupportedOSPlatform("windows5.0")]
         private static bool SetForegroundWindowImpl_Win(Window window)
         {
             var platformHandle = window.TryGetPlatformHandle();
             if (platformHandle == null) return false;
-            return NativeMethods.SetForegroundWindow(platformHandle.Handle);
+            return global::Windows.Win32.PInvoke.SetForegroundWindow(new global::Windows.Win32.Foundation.HWND(platformHandle.Handle));
         }
     }
 }

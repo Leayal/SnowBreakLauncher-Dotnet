@@ -16,7 +16,7 @@ namespace Leayal.Shared.Windows
     public static partial class ProcessInfoHelper
     {
         [UnsupportedOSPlatform("windows")]
-        internal static partial class Unix
+        internal static partial class Linux
         {
             private static readonly long SSIZE_MAX = Environment.Is64BitProcess ? (2L^63L) : (2^31);
 
