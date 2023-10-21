@@ -3,9 +3,9 @@
  
 
 # Notes
- Currently, this is a WIP: The launcher can check for game's update, install game client, update the game client and start the game.
- 
- The launcher has no self-update function. In order to update the launcher, you will need to re-download the launcher by yourself and overwrite the old files.
+ - Currently, this is a hobby project: The launcher can check for game's update, install game client, update the game client and start the game. I can only maintain it in free time and I'll prioritize bug-fixing over feature-adding.
+ - The launcher has no self-update function. In order to update the launcher, you will need to re-download the launcher by yourself and overwrite the old files.
+ - **Regarding playing on Linux OSs**: **`tl;dr: Play at your own risk`**. While this launcher supports downloading and launching the game on Linux-based platforms, the game itself is not designed to support Linux natively. Playing the game via third-party emulations or translation layers \(such as [Wine](https://wiki.winehq.org/Main_Page) or [Proton](https://github.com/ValveSoftware/Proton)\) has risks of banning \(as the emulators/layers may cause false-positive detect from the game's anti-cheat\).
  
  
 # Usage:
