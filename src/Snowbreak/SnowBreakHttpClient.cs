@@ -18,14 +18,14 @@ namespace Leayal.SnowBreakLauncher.Snowbreak;
 
 sealed class SnowBreakHttpClient : HttpClient
 {
-    private static readonly Uri URL_GameClientPCData, URL_GameClientManifest, URL_GameLauncherNews;
+    private static readonly Uri URL_GameClientPCData, URL_GameClientManifest, URL_GameClientPredownloadManifest, URL_GameLauncherNews;
     public static readonly SnowBreakHttpClient Instance;
 
     static SnowBreakHttpClient()
     {
-        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC2/PC/updates/");
-        // https://snowbreak-dl.amazingseasuncdn.com/DLC2/PC/updates/manifest.json
+        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC3/PC/updates/");
         URL_GameClientManifest = new Uri(URL_GameClientPCData, "manifest.json");
+        URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/manifest.json");
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
         Instance = new SnowBreakHttpClient(new SocketsHttpHandler()
         {
@@ -49,11 +49,17 @@ sealed class SnowBreakHttpClient : HttpClient
     {
     }
 
-    public async Task<GameClientManifestData> GetGameClientManifestAsync(CancellationToken cancellationToken = default)
+    public Task<GameClientManifestData> GetGameClientManifestAsync(CancellationToken cancellationToken = default)
+        => this.Inner_GetGameClientManifestAsync(URL_GameClientManifest, cancellationToken);
+
+    public Task<GameClientManifestData> GetGamePredownloadManifestAsync(CancellationToken cancellationToken = default)
+        => this.Inner_GetGameClientManifestAsync(URL_GameClientPredownloadManifest, cancellationToken);
+
+    private async Task<GameClientManifestData> Inner_GetGameClientManifestAsync(Uri uri, CancellationToken cancellationToken = default)
     {
-        using (var req = new HttpRequestMessage(HttpMethod.Get, URL_GameClientManifest))
+        using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
         {
-            req.Headers.Host = URL_GameClientManifest.Host;
+            req.Headers.Host = uri.Host;
             using (var response = await this.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 response.EnsureSuccessStatusCode();
@@ -61,7 +67,7 @@ sealed class SnowBreakHttpClient : HttpClient
                 var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 var jsonDoc = JsonDocument.Parse(jsonContent, new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip });
                 return new GameClientManifestData(jsonDoc);
-            }  
+            }
         }
     }
 

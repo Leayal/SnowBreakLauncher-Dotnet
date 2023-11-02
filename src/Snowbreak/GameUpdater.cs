@@ -231,82 +231,144 @@ sealed class GameUpdater
                                     progressCallback.TotalProgress = 1;
                                     progressCallback.IsDone = false;
                                 }
-                                var pathTo_LocalFile = mgr.Files.GetFullPath(pak.name);
-                                var pathTo_LocalFileTmp = pathTo_LocalFile + ".dl_ing";
-                                var httpClient = SnowBreakHttpClient.Instance;
-
+                                string pathTo_LocalFile = mgr.Files.GetFullPath(pak.name), pathTo_LocalFileTmp;
                                 bool isOkay = false;
                                 long lastWriteTimeUnixSeconds = -1;
 
-                                using (var response = await httpClient.GetFileDownloadResponseAsync(in remoteManifest, in pak, cancellationToken))
+                                var pathTo_PreDownloadFile = Path.Join(mgr.Files.PathToPreReleaseDirectory, pak.hash);
+                                // Check if predownload file is complete and valid.
+                                var isFilePreDownloaded = File.Exists(pathTo_PreDownloadFile);
+                                if (isFilePreDownloaded)
                                 {
-                                    if (!response.IsSuccessStatusCode)
+                                    using (var preDownloadFile_Handle = File.OpenHandle(pathTo_PreDownloadFile, FileMode.Open, FileAccess.Read, FileShare.Read, FileOptions.SequentialScan, 0))
+                                    using (var preDownloadFile_fs = new FileStream(preDownloadFile_Handle, FileAccess.Read, 0))
                                     {
-                                        finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
-                                        continue;
+                                        var predownloadedLen = preDownloadFile_fs.Length;
+                                        if (predownloadedLen == pak.sizeInBytes)
+                                        {
+                                            if (progressCallback != null) progressCallback.TotalProgress = predownloadedLen;
+                                            int read = preDownloadFile_fs.Read(borrowedBuffer, 0, maxBufferSize);
+                                            while (read > 0 && !cancellationToken.IsCancellationRequested)
+                                            {
+                                                md5Hasher.AppendData(borrowedBuffer.AsSpan(0, read));
+                                                progressCallback?.IncreaseCurrentProgress(in read);
+                                                read = preDownloadFile_fs.Read(borrowedBuffer, 0, maxBufferSize);
+                                            }
+                                        }
+                                        else
+                                        {
+                                            isFilePreDownloaded = false;
+                                        }
                                     }
 
-                                    using (var responseStream = response.Content.ReadAsStream())
+                                    if (isFilePreDownloaded)
                                     {
-                                        var header_contentLength = response.Content.Headers.ContentLength;
-                                        long contentLength = header_contentLength.HasValue ? header_contentLength.Value : 0L;
-                                        if (Path.GetDirectoryName(pathTo_LocalFileTmp) is string directoryPath)
+                                        var hashLenInBytes = md5Hasher.GetHashAndReset(borrowedBuffer);
+                                        var hashOfDownloaded = Convert.ToHexString(borrowedBuffer, 0, hashLenInBytes);
+                                        if (string.Equals(hashOfDownloaded, pak.hash, StringComparison.OrdinalIgnoreCase))
                                         {
-                                            Directory.CreateDirectory(directoryPath);
+                                            lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(pathTo_PreDownloadFile))).ToUnixTimeSeconds();
+                                            isOkay = true;
                                         }
-                                        bool addRefSuccess = false;
-                                        using (var fHandle = File.OpenHandle(pathTo_LocalFileTmp, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, FileOptions.None, contentLength))
+                                        else
                                         {
-                                            fHandle.DangerousAddRef(ref addRefSuccess);
-                                            using (var fs = new FileStream(fHandle, FileAccess.ReadWrite, 0 /* We use our big fat 32KB+ buffer above */))
+                                            isFilePreDownloaded = false;
+                                            try
                                             {
-                                                fs.Position = 0;
-                                                if (progressCallback != null) progressCallback.TotalProgress = contentLength;
+                                                File.Delete(pathTo_PreDownloadFile);
+                                            }
+                                            catch { }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        try
+                                        {
+                                            File.Delete(pathTo_PreDownloadFile);
+                                        }
+                                        catch { }
+                                    }
+                                }
 
-                                                int read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
-                                                while (read > 0 && !cancellationToken.IsCancellationRequested)
+                                if (!isFilePreDownloaded)
+                                {
+                                    pathTo_LocalFileTmp = pathTo_LocalFile + ".dl_ing";
+                                    var httpClient = SnowBreakHttpClient.Instance;
+
+                                    using (var response = await httpClient.GetFileDownloadResponseAsync(in remoteManifest, in pak, cancellationToken))
+                                    {
+                                        if (!response.IsSuccessStatusCode)
+                                        {
+                                            finishedOnes.AddOrUpdate(pak, new DownloadResult(false, -1), (p, oldValue) => new DownloadResult(false, -1));
+                                            continue;
+                                        }
+
+                                        using (var responseStream = response.Content.ReadAsStream())
+                                        {
+                                            var header_contentLength = response.Content.Headers.ContentLength;
+                                            long contentLength = header_contentLength.HasValue ? header_contentLength.Value : 0L;
+                                            if (Path.GetDirectoryName(pathTo_LocalFileTmp) is string directoryPath)
+                                            {
+                                                Directory.CreateDirectory(directoryPath);
+                                            }
+                                            bool addRefSuccess = false;
+                                            using (var fHandle = File.OpenHandle(pathTo_LocalFileTmp, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, FileOptions.None, contentLength))
+                                            {
+                                                fHandle.DangerousAddRef(ref addRefSuccess);
+                                                using (var fs = new FileStream(fHandle, FileAccess.ReadWrite, 0 /* We use our big fat 32KB+ buffer above */))
                                                 {
-                                                    fs.Write(borrowedBuffer, 0, read);
-                                                    md5Hasher.AppendData(borrowedBuffer.AsSpan(0, read));
-                                                    if (progressCallback != null) progressCallback?.IncreaseCurrentProgress(in read);
-                                                    read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
-                                                }
+                                                    fs.Position = 0;
+                                                    if (progressCallback != null) progressCallback.TotalProgress = contentLength;
 
-                                                fs.Flush();
-
-                                                var hashLenInBytes = md5Hasher.GetHashAndReset(borrowedBuffer);
-                                                var hashOfDownloaded = Convert.ToHexString(borrowedBuffer, 0, hashLenInBytes);
-                                                if (!cancellationToken.IsCancellationRequested)
-                                                {
-                                                    if (string.Equals(hashOfDownloaded, pak.hash, StringComparison.OrdinalIgnoreCase))
+                                                    int read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
+                                                    while (read > 0 && !cancellationToken.IsCancellationRequested)
                                                     {
-                                                        isOkay = true;
-                                                        // Fix the length if necessary
-                                                        var currentLen = fs.Position;
-                                                        if (currentLen != fs.Length)
+                                                        fs.Write(borrowedBuffer, 0, read);
+                                                        md5Hasher.AppendData(borrowedBuffer.AsSpan(0, read));
+                                                        progressCallback?.IncreaseCurrentProgress(in read);
+                                                        read = responseStream.Read(borrowedBuffer, 0, maxBufferSize);
+                                                    }
+
+                                                    fs.Flush();
+
+                                                    var hashLenInBytes = md5Hasher.GetHashAndReset(borrowedBuffer);
+                                                    var hashOfDownloaded = Convert.ToHexString(borrowedBuffer, 0, hashLenInBytes);
+                                                    if (!cancellationToken.IsCancellationRequested)
+                                                    {
+                                                        if (string.Equals(hashOfDownloaded, pak.hash, StringComparison.OrdinalIgnoreCase))
                                                         {
-                                                            fs.SetLength(currentLen);
+                                                            isOkay = true;
+                                                            // Fix the length if necessary
+                                                            var currentLen = fs.Position;
+                                                            if (currentLen != fs.Length)
+                                                            {
+                                                                fs.SetLength(currentLen);
+                                                            }
                                                         }
                                                     }
                                                 }
+                                                if (addRefSuccess)
+                                                {
+                                                    try
+                                                    {
+                                                        lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(fHandle))).ToUnixTimeSeconds();
+                                                    }
+                                                    finally
+                                                    {
+                                                        fHandle.DangerousRelease();
+                                                    }
+                                                }
                                             }
-                                            if (addRefSuccess)
+                                            if (!addRefSuccess)
                                             {
-                                                try
-                                                {
-                                                    lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(fHandle))).ToUnixTimeSeconds();
-                                                }
-                                                finally
-                                                {
-                                                    fHandle.DangerousRelease();
-                                                }
+                                                lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(pathTo_LocalFileTmp))).ToUnixTimeSeconds();
                                             }
-                                        }
-                                        if (!addRefSuccess)
-                                        {
-                                            lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(pathTo_LocalFileTmp))).ToUnixTimeSeconds();
                                         }
                                     }
+                                }
+                                else
+                                {
+                                    pathTo_LocalFileTmp = pathTo_PreDownloadFile;
                                 }
 
                                 if (isOkay)

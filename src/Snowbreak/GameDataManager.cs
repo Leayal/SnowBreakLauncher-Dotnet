@@ -68,6 +68,8 @@ class GameDataManager
 
     public string PathToManifestJson => Path.Join(this.manager.FullPathOfInstallationDirectory, "manifest.json");
 
+    public string PathToPreReleaseDirectory => Path.Join(this.manager.FullPathOfInstallationDirectory, "game_prerelease");
+
     /// <summary>
     /// 
     /// </summary>
@@ -78,5 +80,4 @@ class GameDataManager
         if (!File.Exists(localManifestPath)) return null;
         return GameClientManifestData.CreateFromLocalFile(localManifestPath);
     }
-
 }

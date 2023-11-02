@@ -40,15 +40,20 @@
 			<Grid>
 				<Grid.ColumnDefinitions>
 					<ColumnDefinition />
-					<ColumnDefinition Width="50" />
+					<ColumnDefinition Width="Auto" />
+					<ColumnDefinition Width="Auto" />
 				</Grid.ColumnDefinitions>
 				<ProgressBar Grid.ColumnSpan="2" CornerRadius="5" Padding="0" Margin="0" x:Name="ProgressBar_Main" IsIndeterminate="True" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" IsHitTestVisible="False" />
 				<Button Margin="0" Padding="0" x:Name="Btn_StartGame" Click="Btn_StartGame_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"
 						CornerRadius="5,0,0,5">
 					<TextBlock Padding="0" Margin="0" Name="BtnText_StartGame" Text="Loading launcher UI..." VerticalAlignment="Center" HorizontalAlignment="Stretch" TextAlignment="Center" IsHitTestVisible="False" />
 				</Button>
-				<Button Grid.Column="1" Margin="0" Padding="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" CornerRadius="0,5,5,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-									x:Name="BtnSettings" Click="BtnSettings_Click" IsEnabled="{Binding #Btn_StartGame.IsEnabled}">
+				<Button Grid.Column="1" Margin="0" Padding="0" x:Name="Btn_Predownload" Click="Btn_StartGame_Click" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+						IsEnabled="{Binding #Btn_StartGame.IsEnabled}" IsVisible="False" ToolTip.Tip="Pre-download updates" Width="50">
+					<TextBlock Text="☁" FontSize="20" TextAlignment="Center" IsHitTestVisible="False" />
+				</Button>
+				<Button Grid.Column="2" Margin="0" Padding="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" CornerRadius="0,5,5,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+									x:Name="BtnSettings" Click="BtnSettings_Click" IsEnabled="{Binding #Btn_StartGame.IsEnabled}" ToolTip.Tip="Launcher settings" Width="50">
 					<Button.ContextMenu>
 						<ContextMenu Placement="TopEdgeAlignedRight" Initialized="ExtraContextMenu_Initialized">
 							<MenuItem Click="MenuItem_ChangeGameClientDirectory_Click">
