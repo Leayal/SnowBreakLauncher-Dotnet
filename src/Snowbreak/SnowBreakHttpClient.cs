@@ -1,11 +1,4 @@
-﻿// .NET 8.0.0-rc2 is another dumb design?
-// So, for some reasons, "NET8_0_OR_GREATER" constant doesn't exist (older .NET8 SDK versions have it)
-// Because they considered, years later, everyone will have time and be happy to read god-know-when source code and 'find and replace' constant "NET8_0" to "NET8_0_OR_GREATER" without having to debug.
-#if NET8_0
-#define NET8_0_OR_GREATER
-#endif
-
-using Leayal.SnowBreakLauncher.Classes;
+﻿using Leayal.SnowBreakLauncher.Classes;
 using System;
 using System.IO;
 using System.Net;
@@ -23,7 +16,7 @@ sealed class SnowBreakHttpClient : HttpClient
 
     static SnowBreakHttpClient()
     {
-        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC3/PC/updates/");
+        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC4/PC/updates/");
         URL_GameClientManifest = new Uri(URL_GameClientPCData, "manifest.json");
         URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/manifest.json");
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
