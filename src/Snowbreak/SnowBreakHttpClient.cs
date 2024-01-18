@@ -16,7 +16,7 @@ sealed class SnowBreakHttpClient : HttpClient
 
     static SnowBreakHttpClient()
     {
-        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC4/PC/updates/");
+        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC5/PC/updates/");
         URL_GameClientManifest = new Uri(URL_GameClientPCData, "manifest.json");
         URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/manifest.json");
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
