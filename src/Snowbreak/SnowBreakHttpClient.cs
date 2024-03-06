@@ -11,15 +11,15 @@ namespace Leayal.SnowBreakLauncher.Snowbreak;
 
 sealed class SnowBreakHttpClient : HttpClient
 {
-    private static readonly Uri URL_GameClientPCData, URL_GameClientManifest, URL_GameClientPredownloadManifest, URL_GameLauncherNews;
+    private static readonly Uri URL_GameClientPredownloadManifest, URL_GameLauncherNews, URL_LauncherLatestVersion, URL_LauncherManifest;
     public static readonly SnowBreakHttpClient Instance;
 
     static SnowBreakHttpClient()
     {
-        URL_GameClientPCData = new Uri($"https://snowbreak-dl.amazingseasuncdn.com/DLC5/PC/updates/");
-        URL_GameClientManifest = new Uri(URL_GameClientPCData, "manifest.json");
         URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/manifest.json");
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
+        URL_LauncherLatestVersion = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/launcher/seasun/updates/latest");
+        URL_LauncherManifest = new Uri("https://leayal.github.io/SnowBreakLauncher-Dotnet/publish/v1/launcher-manifest.json");
         Instance = new SnowBreakHttpClient(new SocketsHttpHandler()
         {
             AllowAutoRedirect = true,
@@ -42,8 +42,54 @@ sealed class SnowBreakHttpClient : HttpClient
     {
     }
 
-    public Task<GameClientManifestData> GetGameClientManifestAsync(CancellationToken cancellationToken = default)
-        => this.Inner_GetGameClientManifestAsync(URL_GameClientManifest, cancellationToken);
+    public async Task<Uri> FetchResourceURL(CancellationToken cancellationToken = default)
+    {
+        var t_launcherLatestVersion = this.GetGameLauncherLatestVersionAsync(cancellationToken);
+
+        using (var req = new HttpRequestMessage(HttpMethod.Get, URL_LauncherManifest))
+        {
+            req.Headers.Host = URL_LauncherManifest.Host;
+            using (var response = await this.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+            {
+                response.EnsureSuccessStatusCode();
+
+                var launcherVersion = await t_launcherLatestVersion;
+
+                var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                using (var jsonDoc = JsonDocument.Parse(jsonContent, new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip }))
+                {
+                    var rootEle = jsonDoc.RootElement;
+
+                    Uri? resourceSrc = null;
+
+                    if ((rootEle.TryGetProperty("overrides", out var prop_targetOverridenList) && prop_targetOverridenList.ValueKind == JsonValueKind.Object)
+                        && (prop_targetOverridenList.TryGetProperty(launcherVersion, out var prop_targetOverriden) && prop_targetOverriden.ValueKind == JsonValueKind.String))
+                    {
+                        var overrideString = prop_targetOverriden.GetString();
+                        if (!string.IsNullOrWhiteSpace(overrideString))
+                        {
+                            resourceSrc = new Uri(overrideString.EndsWith('/') ? overrideString : (overrideString + '/'));
+                        }
+                    }
+
+                    if (resourceSrc == null)
+                    {
+                        var defaultUrl = rootEle.GetProperty("default").GetString();
+                        if (string.IsNullOrEmpty(defaultUrl)) throw new ArgumentOutOfRangeException();
+                        resourceSrc = new Uri(defaultUrl.EndsWith('/') ? defaultUrl : (defaultUrl + '/'));
+                    }
+
+                    return resourceSrc;
+                }
+            }
+        }
+    }
+
+    public async Task<GameClientManifestData> GetGameClientManifestAsync(CancellationToken cancellationToken = default)
+    {
+        var URL_GameClientPCData = await this.FetchResourceURL(cancellationToken);
+        return await this.Inner_GetGameClientManifestAsync(new Uri(URL_GameClientPCData, "manifest.json"), cancellationToken);
+    }
 
     public Task<GameClientManifestData> GetGamePredownloadManifestAsync(CancellationToken cancellationToken = default)
         => this.Inner_GetGameClientManifestAsync(URL_GameClientPredownloadManifest, cancellationToken);
@@ -64,12 +110,28 @@ sealed class SnowBreakHttpClient : HttpClient
         }
     }
 
+    private async Task<string> GetGameLauncherLatestVersionAsync(CancellationToken cancellationToken = default)
+    {
+        using (var req = new HttpRequestMessage(HttpMethod.Get, URL_LauncherLatestVersion))
+        {
+            req.Headers.Host = URL_LauncherLatestVersion.Host;
+            using (var response = await this.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
+            {
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync(cancellationToken);
+            }
+        }
+    }
+
     public Task<HttpResponseMessage> GetFileDownloadResponseFromFileHashAsync(in GameClientManifestData manifest, string fileHash, CancellationToken cancellationToken = default)
     {
+        var URL_GameClientPCData = manifest.AssociatedUrl;
 #if NET8_0_OR_GREATER
         ArgumentException.ThrowIfNullOrWhiteSpace(fileHash);
+        ArgumentNullException.ThrowIfNull(URL_GameClientPCData);
 #else
         if (string.IsNullOrWhiteSpace(fileHash)) throw new ArgumentException(null, nameof(fileHash));
+        if (URL_GameClientPCData == null) throw new ArgumentNullException();
 #endif
 
         var url = new Uri(URL_GameClientPCData, Path.Join(manifest.pathOffset, fileHash));

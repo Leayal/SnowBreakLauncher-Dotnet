@@ -325,10 +325,14 @@ public readonly struct GameClientManifestData : IDisposable
     */
 
     private readonly JsonDocument _doc;
+    public readonly Uri? AssociatedUrl;
 
-    public GameClientManifestData(JsonDocument doc) 
+    public GameClientManifestData(JsonDocument doc) : this(doc, null) { }
+
+    public GameClientManifestData(JsonDocument doc, Uri? associatedUrl) 
     {
         this._doc = doc;
+        this.AssociatedUrl = associatedUrl;
     }
 
     public readonly string? projectVersion => this.GetString();

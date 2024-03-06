@@ -1,0 +1,206 @@
+html, body {
+    width: 100%;
+    height: 100%;
+    padding: 0px;
+    margin: 0px;
+}
+
+div.root {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+div.root div.body {
+    display: flex;
+    flex-direction: row;
+    flex: auto;
+}
+
+.side-bar {
+    max-width: 300px;
+    width: 20%;
+    background-color: rgba(17,17,17,0.4);
+    height: 100%;
+}
+
+.side-bar .navigation-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.side-bar .navigation-list > * {
+    padding: 5px;
+}
+
+.title-bar {
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    background-image: linear-gradient(180deg, #389cd1, #0b2447);
+}
+
+.title-bar .title {
+    position: sticky;
+    top: 0px;
+}
+
+.content {
+    padding: 5px;
+    overflow-y: auto;
+    width: 100%;
+    height: 100%;
+}
+
+.title-bar .title span {
+    color: white;
+    font-size:xx-large;
+    display: block;
+    width: 100%;
+    text-align: center;
+}
+
+.git-release-title {
+    text-align: center;
+}
+
+.git-release-body {
+    font-size: large;
+}
+
+.git-release-asset-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.git-release-asset-list > * {
+    padding: 5px;
+    border: 1px solid;
+    border-radius: 10px;
+    width: fit-content;
+}
+
+div.loader3d {
+    position: relative;
+    top: 50%;
+}
+
+.git-commit-list {
+    display: flex;
+    flex-direction: column;
+}
+
+    .git-commit-list .git-commit-item {
+        display: flex;
+        flex-direction: column;
+        border: 3px solid black;
+    }
+
+    .git-commit-list .git-commit-item .git-commit-header {
+        display: flex;
+        flex-direction: row;
+    }
+
+    .git-commit-list .git-commit-item .git-commit-header h2 {
+        margin: 0px;
+        margin-right: 5px;
+    }
+    
+    .git-commit-list .git-commit-item .git-commit-summary {
+        white-space: pre-wrap;
+    }
+
+        .git-commit-list .git-commit-item a.git-commit-viewdetail {
+            display: none;
+            margin-left: auto;
+        }
+
+        .git-commit-list .git-commit-item:hover a.git-commit-viewdetail {
+            display: block;
+        }
+
+a.neon-button {
+    position: relative;
+    display: inline-block;
+    padding: 15px 30px;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    text-decoration: none;
+    font-size: 24px;
+    overflow: hidden;
+}
+
+a.neon-button:not(.current-page) {
+    transition: 0.2s;
+}
+
+a.neon-button.current-page {
+    box-shadow: 0 0 10px #2196f3, 0 0 40px #2196f3, 0 0 80px #2196f3;
+}
+
+a.neon-button:not(.current-page):hover {
+    color: #255784;
+    background: #2196f3;
+    box-shadow: 0 0 10px #2196f3, 0 0 40px #2196f3, 0 0 80px #2196f3;
+    transition-delay: 0.6s;
+}
+
+a.neon-button span {
+    position: absolute;
+    display: block;
+}
+
+a.neon-button span:nth-child(1) {
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #2196f3);
+}
+
+a.neon-button:not(.current-page):hover span:nth-child(1) {
+    left: 100%;
+    transition: 0.6s;
+}
+
+a.neon-button span:nth-child(2) {
+    top: -100%;
+    right: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(180deg, transparent, #2196f3);
+}
+
+a.neon-button:not(.current-page):hover span:nth-child(2) {
+    top: 100%;
+    transition: 0.6s;
+    transition-delay: 0.15s;
+}
+
+a.neon-button span:nth-child(3) {
+    bottom: 0;
+    right: -100%;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(270deg, transparent, #2196f3);
+}
+
+a.neon-button:not(.current-page):hover span:nth-child(3) {
+    right: 100%;
+    transition: 0.6s;
+    transition-delay: 0.3s;
+}
+
+a.neon-button span:nth-child(4) {
+    bottom: -100%;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background: linear-gradient(360deg, transparent, #2196f3);
+}
+
+a.neon-button:not(.current-page):hover span:nth-child(4) {
+    bottom: 100%;
+    transition: 0.6s;
+    transition-delay: 0.45s;
+}

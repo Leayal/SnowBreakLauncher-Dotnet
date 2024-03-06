@@ -85,7 +85,7 @@ sealed class GameUpdater
         return ((new DateTimeOffset(File.GetLastWriteTimeUtc(file))).ToUnixTimeSeconds() == fastVerifyValue.Value);
     }
 
-    private record struct DownloadResult(bool success, long fileLastWriteTimeInUnixSeconds);
+    private readonly record struct DownloadResult(bool success, long fileLastWriteTimeInUnixSeconds);
 
     public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, bool skipCrcTableCache = false, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
     {
