@@ -327,7 +327,7 @@ public readonly struct GameClientManifestData : IDisposable
     private readonly JsonDocument _doc;
     public readonly Uri? AssociatedUrl;
 
-    public GameClientManifestData(JsonDocument doc) : this(doc, null) { }
+    private GameClientManifestData(JsonDocument doc) : this(doc, null) { }
 
     public GameClientManifestData(JsonDocument doc, Uri? associatedUrl) 
     {

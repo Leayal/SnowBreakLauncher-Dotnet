@@ -16,7 +16,7 @@ sealed class SnowBreakHttpClient : HttpClient
 
     static SnowBreakHttpClient()
     {
-        URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/manifest.json");
+        URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/");
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
         URL_LauncherLatestVersion = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/launcher/seasun/updates/latest");
         URL_LauncherManifest = new Uri("https://leayal.github.io/SnowBreakLauncher-Dotnet/publish/v1/launcher-manifest.json");
@@ -88,24 +88,25 @@ sealed class SnowBreakHttpClient : HttpClient
     public async Task<GameClientManifestData> GetGameClientManifestAsync(CancellationToken cancellationToken = default)
     {
         var URL_GameClientPCData = await this.FetchResourceURL(cancellationToken);
-        return await this.Inner_GetGameClientManifestAsync(new Uri(URL_GameClientPCData, "manifest.json"), cancellationToken);
+        return await this.Inner_GetGameClientManifestAsync(URL_GameClientPCData, cancellationToken);
     }
 
     public Task<GameClientManifestData> GetGamePredownloadManifestAsync(CancellationToken cancellationToken = default)
         => this.Inner_GetGameClientManifestAsync(URL_GameClientPredownloadManifest, cancellationToken);
 
-    private async Task<GameClientManifestData> Inner_GetGameClientManifestAsync(Uri uri, CancellationToken cancellationToken = default)
+    private async Task<GameClientManifestData> Inner_GetGameClientManifestAsync(Uri uri_base, CancellationToken cancellationToken = default)
     {
-        using (var req = new HttpRequestMessage(HttpMethod.Get, uri))
+        var uri_manifest = new Uri(uri_base, "manifest.json");
+        using (var req = new HttpRequestMessage(HttpMethod.Get, uri_manifest))
         {
-            req.Headers.Host = uri.Host;
+            req.Headers.Host = uri_manifest.Host;
             using (var response = await this.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 response.EnsureSuccessStatusCode();
 
                 var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 var jsonDoc = JsonDocument.Parse(jsonContent, new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip });
-                return new GameClientManifestData(jsonDoc);
+                return new GameClientManifestData(jsonDoc, uri_base);
             }
         }
     }
