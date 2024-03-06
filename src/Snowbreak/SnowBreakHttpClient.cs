@@ -63,7 +63,7 @@ sealed class SnowBreakHttpClient : HttpClient
                     Uri? resourceSrc = null;
 
                     if ((rootEle.TryGetProperty("overrides", out var prop_targetOverridenList) && prop_targetOverridenList.ValueKind == JsonValueKind.Object)
-                        && (prop_targetOverridenList.TryGetProperty(launcherVersion, out var prop_targetOverriden) && prop_targetOverriden.ValueKind == JsonValueKind.String))
+                        && (prop_targetOverridenList.TryGetProperty(launcherVersion.AsSpan().Trim(), out var prop_targetOverriden) && prop_targetOverriden.ValueKind == JsonValueKind.String))
                     {
                         var overrideString = prop_targetOverriden.GetString();
                         if (!string.IsNullOrWhiteSpace(overrideString))
