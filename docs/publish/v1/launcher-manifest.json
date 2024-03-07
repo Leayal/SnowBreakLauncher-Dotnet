@@ -1,6 +1,7 @@
 {
-	"default": "https://snowbreak-dl.amazingseasuncdn.com/DLC6/PC/updates/",
+	"default": "https://snowbreak-dl.amazingseasuncdn.com/DLC7/PC/updates/",
 	"overrides": {
+		"1.6.0": "https://snowbreak-dl.amazingseasuncdn.com/DLC6/PC/updates/",
 		"1.5.0": "https://snowbreak-dl.amazingseasuncdn.com/DLC5/PC/updates/"
 	}
 }
