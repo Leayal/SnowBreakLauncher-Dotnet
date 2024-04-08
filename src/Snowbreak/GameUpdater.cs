@@ -85,6 +85,12 @@ sealed class GameUpdater
         return ((new DateTimeOffset(File.GetLastWriteTimeUtc(file))).ToUnixTimeSeconds() == fastVerifyValue.Value);
     }
 
+    /// <summary></summary>
+    /// <param name="pak"></param>
+    /// <returns><see langword="true"/> if the file's cached hash should be skipped and the hash will be calculated from data on disk. <see langword="false"/> if cached hash is allowed to use.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    static bool IsFileForcedToSkipHashCache(in PakEntry pak) => pak.name.EndsWith("Game.exe", StringComparison.OrdinalIgnoreCase); // Currently there's only 1 file so we can do one-line.
+
     private readonly record struct DownloadResult(bool success, long fileLastWriteTimeInUnixSeconds);
 
     public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, bool skipCrcTableCache = false, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
@@ -145,7 +151,7 @@ sealed class GameUpdater
                         var path_localPak = mgr.Files.GetFullPath(pak.name);
                         if (File.Exists(path_localPak))
                         {
-                            if (!skipCrcTableCache && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
+                            if (!skipCrcTableCache && !IsFileForcedToSkipHashCache(in pak) && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
                             {
                                 if (!string.Equals(localPakInfo.hash, pak.hash, StringComparison.OrdinalIgnoreCase) || localPakInfo.sizeInBytes != pak.sizeInBytes)
                                 {
