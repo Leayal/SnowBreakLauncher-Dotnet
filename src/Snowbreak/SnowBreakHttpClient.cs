@@ -3,6 +3,7 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ namespace Leayal.SnowBreakLauncher.Snowbreak;
 
 sealed class SnowBreakHttpClient : HttpClient
 {
+    private const string TemplateURL_RemoteDataResources = "https://snowbreak-dl.amazingseasuncdn.com/DLC{0}/PC/updates/"; // {0} was for string.Format method.
     private static readonly Uri URL_GameClientPredownloadManifest, URL_GameLauncherNews, URL_LauncherLatestVersion, URL_LauncherManifest;
     public static readonly SnowBreakHttpClient Instance;
 
@@ -20,6 +22,10 @@ sealed class SnowBreakHttpClient : HttpClient
         URL_GameLauncherNews = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/webfile/launcher/launcher-information.json");
         URL_LauncherLatestVersion = new Uri("https://snowbreak-content.amazingseasuncdn.com/ob202307/launcher/seasun/updates/latest");
         URL_LauncherManifest = new Uri("https://leayal.github.io/SnowBreakLauncher-Dotnet/publish/v1/launcher-manifest.json");
+
+        // We put the config reading here so that the static class still follow .NET lazy static initialization mechanism.
+        var useDoH = (App.Current is App app) ? app.LeaLauncherConfig.Networking_UseDoH : true;
+
         Instance = new SnowBreakHttpClient(new SocketsHttpHandler()
         {
             AllowAutoRedirect = true,
@@ -27,7 +33,10 @@ sealed class SnowBreakHttpClient : HttpClient
             Proxy = null,
             UseProxy = false,
             UseCookies = true,
-        });
+        })
+        {
+            EnableDnsOverHttps = useDoH
+        };
         Instance.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36");
         AppDomain.CurrentDomain.ProcessExit += CurrentDomain_ProcessExit;
     }
@@ -38,8 +47,23 @@ sealed class SnowBreakHttpClient : HttpClient
         Instance.Dispose();
     }
 
-    private SnowBreakHttpClient(SocketsHttpHandler handler) : base(new HttpClientSecureDnsResolver(handler), true)
+    private readonly HttpClientSecureDnsResolver doHHandler;
+
+    public bool EnableDnsOverHttps
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => this.doHHandler.IsEnabled;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        set => this.doHHandler.IsEnabled = value;
+    }
+
+    private SnowBreakHttpClient(SocketsHttpHandler handler) : this(new HttpClientSecureDnsResolver(handler), true)
+    {
+    }
+
+    private SnowBreakHttpClient(HttpClientSecureDnsResolver handler, bool disposeBaseHandler) : base(handler, disposeBaseHandler)
+    {
+        this.doHHandler = handler;
     }
 
     public async Task<Uri> FetchResourceURL(CancellationToken cancellationToken = default)
@@ -53,33 +77,47 @@ sealed class SnowBreakHttpClient : HttpClient
             {
                 response.EnsureSuccessStatusCode();
 
-                var launcherVersion = await t_launcherLatestVersion;
-
                 var jsonContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                using (var jsonDoc = JsonDocument.Parse(jsonContent, new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip }))
+                var str_launcherVersion = await t_launcherLatestVersion;
+
+                return CheatingThe_AsyncNoSpanRule(in str_launcherVersion, in jsonContent);
+
+                static Uri CheatingThe_AsyncNoSpanRule(in string str_launcherVersion, in string jsonContent)
                 {
-                    var rootEle = jsonDoc.RootElement;
-
-                    Uri? resourceSrc = null;
-
-                    if ((rootEle.TryGetProperty("overrides", out var prop_targetOverridenList) && prop_targetOverridenList.ValueKind == JsonValueKind.Object)
-                        && (prop_targetOverridenList.TryGetProperty(launcherVersion.AsSpan().Trim(), out var prop_targetOverriden) && prop_targetOverriden.ValueKind == JsonValueKind.String))
+                    var spanStr_launcherVersion = str_launcherVersion.AsSpan().Trim();
+                    using (var jsonDoc = JsonDocument.Parse(jsonContent, new JsonDocumentOptions() { CommentHandling = JsonCommentHandling.Skip }))
                     {
-                        var overrideString = prop_targetOverriden.GetString();
-                        if (!string.IsNullOrWhiteSpace(overrideString))
+                        var rootEle = jsonDoc.RootElement;
+
+                        Uri? resourceSrc = null;
+
+                        if ((rootEle.TryGetProperty("overrides", out var prop_targetOverridenList) && prop_targetOverridenList.ValueKind == JsonValueKind.Object)
+                            && (prop_targetOverridenList.TryGetProperty(spanStr_launcherVersion, out var prop_targetOverriden) && prop_targetOverriden.ValueKind == JsonValueKind.String))
                         {
-                            resourceSrc = new Uri(overrideString.EndsWith('/') ? overrideString : (overrideString + '/'));
+                            var overrideString = prop_targetOverriden.GetString();
+                            if (!string.IsNullOrWhiteSpace(overrideString))
+                            {
+                                resourceSrc = new Uri(overrideString.EndsWith('/') ? overrideString : (overrideString + '/'));
+                            }
                         }
-                    }
 
-                    if (resourceSrc == null)
-                    {
-                        var defaultUrl = rootEle.GetProperty("default").GetString();
-                        if (string.IsNullOrEmpty(defaultUrl)) throw new ArgumentOutOfRangeException();
-                        resourceSrc = new Uri(defaultUrl.EndsWith('/') ? defaultUrl : (defaultUrl + '/'));
-                    }
+                        // Attempt to craft the URL from the launcher version.
+                        // As of writing this (27th April 2024), the minor version of launcher match with the DLC index of the URL.
+                        // This should make the compatibility last for as long as they don't change this behavior
+                        if (Version.TryParse(spanStr_launcherVersion, out var versionObj) && versionObj.Minor > 0)
+                        {
+                            resourceSrc = new Uri(string.Format(TemplateURL_RemoteDataResources, versionObj.Minor));
+                        }
+                        
+                        if (resourceSrc == null)
+                        {
+                            var defaultUrl = rootEle.GetProperty("default").GetString();
+                            if (string.IsNullOrEmpty(defaultUrl)) throw new ArgumentOutOfRangeException();
+                            resourceSrc = new Uri(defaultUrl.EndsWith('/') ? defaultUrl : (defaultUrl + '/'));
+                        }
 
-                    return resourceSrc;
+                        return resourceSrc;
+                    }
                 }
             }
         }
@@ -164,5 +202,14 @@ sealed class SnowBreakHttpClient : HttpClient
                 return new LauncherNewsHttpResponse(jsonContent);
             }
         }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            this.doHHandler.Dispose();
+        }
+        base.Dispose(disposing);
     }
 }

@@ -3,7 +3,6 @@ using System;
 using System.IO;
 using System.Net;
 using System.Net.Http;
-using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -11,9 +10,18 @@ using System.Threading.Tasks;
 
 namespace Leayal.SnowBreakLauncher.Classes
 {
-    class HttpClientSecureDnsResolver : DelegatingHandler
+    sealed class HttpClientSecureDnsResolver : DelegatingHandler
     {
         private readonly DoHClient dnsClient;
+        private int state_isEnabled;
+
+        public bool IsEnabled
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => (Interlocked.CompareExchange(ref this.state_isEnabled, -1, -1) > 0);
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            set => Interlocked.Exchange(ref this.state_isEnabled, value ? 1 : 0);
+        }
 
         public HttpClientSecureDnsResolver(SocketsHttpHandler handler) : base(handler) 
         {
@@ -23,6 +31,7 @@ namespace Leayal.SnowBreakLauncher.Classes
                 RequireDNSSEC = false
             };
             handler.ConnectCallback += this.HttpClient_HandleConnect;
+            this.IsEnabled = true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -84,8 +93,29 @@ namespace Leayal.SnowBreakLauncher.Classes
             }
         }
 
+        private static async Task<Stream> DefaultHandle_HandleConnect(DnsEndPoint endPoint, CancellationToken cancellationToken)
+        {
+            Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp)
+            {
+                NoDelay = true
+            };
+            try
+            {
+                await socket.ConnectAsync(endPoint, cancellationToken).ConfigureAwait(continueOnCapturedContext: false);
+                return new NetworkStream(socket, ownsSocket: true);
+            }
+            catch
+            {
+                socket.Dispose();
+                throw;
+            }
+        }
+
         private async ValueTask<Stream> HttpClient_HandleConnect(SocketsHttpConnectionContext ctx, CancellationToken cancelToken)
         {
+            if (!this.IsEnabled)
+                return await DefaultHandle_HandleConnect(ctx.DnsEndPoint, cancelToken);
+
             var hostname = ctx.DnsEndPoint.Host;
             if (IPAddress.TryParse(hostname, out var remoteIp))
             {
@@ -165,67 +195,6 @@ namespace Leayal.SnowBreakLauncher.Classes
 #endif
                 }
         }
-
-        /*
-        private static HttpRequestMessage Clone(HttpRequestMessage req, Uri? uri = null)
-        {
-            var clone = new HttpRequestMessage(req.Method, uri ?? req.RequestUri);
-
-            clone.Content = req.Content;
-            clone.Version = req.Version;
-
-            if (req.Headers.Host == null && req.RequestUri is Uri original)
-            {
-                clone.Headers.Host = original.Host;
-            }
-
-            foreach (var prop in req.Options)
-            {
-                clone.Options.TryAdd(prop.Key, prop.Value);
-            }
-
-            foreach (var header in req.Headers)
-            {
-                clone.Headers.TryAddWithoutValidation(header.Key, header.Value);
-            }
-
-            return clone;
-        }
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-        {
-            var uri = request.RequestUri;
-            if (uri == null) return await base.SendAsync(request, cancellationToken);
-            else if (IPAddress.TryParse(uri.Host, out _)) return await base.SendAsync(request, cancellationToken);
-            else
-            {
-                var hostname = uri.DnsSafeHost;
-                var records = await DnsCache.GetAsync(hostname, cancellationToken);
-                if (records.Count == 0)
-                {
-                    return await base.SendAsync(request, cancellationToken);
-                }
-                else
-                {
-                    var uriBuilder = new UriBuilder(uri);
-                    foreach (var ip in records)
-                    {
-                        if (cancellationToken.IsCancellationRequested) break;
-                        uriBuilder.Host = ip.ToString();
-                        try
-                        {
-                            return await base.SendAsync(Clone(request, uriBuilder.Uri), cancellationToken);
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            throw;
-                        }
-                    }
-                    return await base.SendAsync(request, cancellationToken);
-                }
-            }
-        }
-        */
 
         protected override void Dispose(bool disposing)
         {

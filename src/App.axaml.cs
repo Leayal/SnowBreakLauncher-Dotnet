@@ -13,7 +13,6 @@ namespace Leayal.SnowBreakLauncher;
 public partial class App : Application
 {
     public readonly OfficialJsonConfiguration LauncherConfig;
-    [UnsupportedOSPlatform("windows", "This field is null on Windows as there is no settings regard Windows OS in this class.")]
     public readonly LeaLauncherConfiguration LeaLauncherConfig;
     internal readonly Program.InstanceController? ProcessInstance;
 
@@ -28,11 +27,7 @@ public partial class App : Application
         // - Or copies the file "preference.json" from the official launcher's folder to this launcher's folder, then edit the copied json file to correct the game client's location path.
         this.LauncherConfig = new OfficialJsonConfiguration(Path.GetFullPath("preference.json", rootDir));
 
-#pragma warning disable CA1416 // Validate platform compatibility
-#pragma warning disable CS8601 // Possible null reference assignment.
-        this.LeaLauncherConfig = OperatingSystem.IsWindows() ? null : new LeaLauncherConfiguration(Path.GetFullPath("lea-sblauncher.json", rootDir));
-#pragma warning restore CS8601 // Possible null reference assignment.
-#pragma warning restore CA1416 // Validate platform compatibility
+        this.LeaLauncherConfig = new LeaLauncherConfiguration(Path.GetFullPath("lea-sblauncher.json", rootDir));
     }
 
     internal App(Program.InstanceController processInstance) : this()

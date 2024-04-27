@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Frozen;
 #endif
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -340,11 +341,42 @@ public readonly struct GameClientManifestData : IDisposable
 
     public readonly string? pathOffset => this.GetString();
 
-    public readonly IReadOnlyDictionary<string, PakEntry> GetPakDictionary()
+#if NET8_0_OR_GREATER
+    public readonly ImmutableDictionary<string, PakEntry> GetPakDictionary()
     {
-        var dictionary = new Dictionary<string, PakEntry>(this.PakCount, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         if (this._doc.RootElement.TryGetProperty("paks", out var prop) && prop.ValueKind == JsonValueKind.Array)
         {
+            var builder = ImmutableDictionary.CreateBuilder<string, PakEntry>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+            foreach (var pak in prop.EnumerateArray())
+            {
+                var pakInfo = new PakEntry(in pak);
+                var key = pakInfo.name;
+                if (builder.TryGetValue(key, out var oldEntry))
+                {
+                    if (!string.IsNullOrEmpty(pakInfo.hash) && !string.Equals(oldEntry.hash, pakInfo.hash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (pakInfo.bPrimary == true || string.IsNullOrEmpty(oldEntry.hash))
+                        {
+                            builder[pakInfo.name] = pakInfo;
+                        }
+                    }
+                }
+                else
+                {
+                    builder.Add(pakInfo.name, pakInfo);
+                }
+            }
+
+            return builder.ToImmutable();
+        }
+        return ImmutableDictionary<string, PakEntry>.Empty;
+    }
+#else
+    public readonly IReadOnlyDictionary<string, PakEntry> GetPakDictionary()
+    {
+        if (this._doc.RootElement.TryGetProperty("paks", out var prop) && prop.ValueKind == JsonValueKind.Array)
+        {
+            var dictionary = new Dictionary<string, PakEntry>(this.PakCount, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
             foreach (var pak in prop.EnumerateArray())
             {
                 var pakInfo = new PakEntry(in pak);
@@ -364,13 +396,11 @@ public readonly struct GameClientManifestData : IDisposable
                     dictionary.Add(pakInfo.name, pakInfo);
                 }
             }
+            return dictionary.AsReadOnly();
         }
-#if NET8_0_OR_GREATER
-        return FrozenDictionary.ToFrozenDictionary(dictionary, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-#else
-        return dictionary.AsReadOnly();
-#endif
+        return FrozenDictionary<string, PakEntry>.Empty;
     }
+#endif
 
     public readonly IEnumerable<PakEntry> GetPaks()
     {

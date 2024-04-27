@@ -6,16 +6,21 @@ namespace Leayal.Shared.Windows
     {
         public static void MoveOverwrite_AwareReadOnly(string sourceFilepath, string destinationFilepath)
         {
-            if (File.Exists(destinationFilepath))
+            ForceDelete(destinationFilepath);
+            File.Move(sourceFilepath, destinationFilepath, true);
+        }
+
+        public static void ForceDelete(string filePath)
+        {
+            if (File.Exists(filePath))
             {
-                var attr = File.GetAttributes(destinationFilepath);
+                var attr = File.GetAttributes(filePath);
                 if ((attr & FileAttributes.ReadOnly) != 0)
                 {
-                    File.SetAttributes(destinationFilepath, attr & ~FileAttributes.ReadOnly);
+                    File.SetAttributes(filePath, attr & ~FileAttributes.ReadOnly);
                 }
-                File.Delete(destinationFilepath);
+                File.Delete(filePath);
             }
-            File.Move(sourceFilepath, destinationFilepath, true);
         }
     }
 }

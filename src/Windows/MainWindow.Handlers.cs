@@ -307,6 +307,12 @@ namespace Leayal.SnowBreakLauncher.Windows
             }
         }
 
+        public void MenuItem_LauncherSettings_Click(object source, RoutedEventArgs args)
+        {
+            var dialog = new LauncherSettings();
+            dialog.ShowDialog(this);
+        }
+
         public async void MenuItem_ChangeGameClientDirectory_Click(object source, RoutedEventArgs args)
         {
             var gameMgr = GameManager.Instance as GameManager;

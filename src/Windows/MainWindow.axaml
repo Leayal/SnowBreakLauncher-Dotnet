@@ -56,6 +56,11 @@
 									x:Name="BtnSettings" Click="BtnSettings_Click" IsEnabled="{Binding #Btn_StartGame.IsEnabled}" ToolTip.Tip="Launcher settings" Width="50">
 					<Button.ContextMenu>
 						<ContextMenu Placement="TopEdgeAlignedRight" Initialized="ExtraContextMenu_Initialized">
+							<MenuItem Click="MenuItem_LauncherSettings_Click">
+								<MenuItem.Header>
+									<TextBlock Text="Change Launcher Settings" />
+								</MenuItem.Header>
+							</MenuItem>
 							<MenuItem Click="MenuItem_ChangeGameClientDirectory_Click">
 								<MenuItem.Header>
 									<TextBlock Text="Change Game Client Directory" />

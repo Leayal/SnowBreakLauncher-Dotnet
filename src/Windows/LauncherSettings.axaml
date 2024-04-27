@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+		MinWidth="250" MinHeight="120" Width="350" Height="120"
+		WindowStartupLocation="CenterOwner" CanResize="False"  ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaToDecorationsHint="True"
+        x:Class="Leayal.SnowBreakLauncher.LauncherSettings"
+        Title="Launcher Settings">
+	<Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,*,Auto">
+		<TextBlock TextAlignment="Center" Text="Launcher Settings" FontSize="22" Margin="5" />
+
+		<CheckBox Grid.Row="1"  VerticalAlignment="Center" x:Name="CheckBox_Networking_UseDoH" ToolTip.Tip="Use secure DNS protocol to resolve domain names into IP addresses (specifically, DNS over HTTPS). Secure DNS server provider is Cloudflare (specifically, 1.1.1.1).">
+			<TextBlock VerticalAlignment="Center" Text="Use secure DNS Resolver (Cloudflare DNS over HTTPS)" ToolTip.Tip="Use secure DNS protocol to resolve domain names into IP addresses (specifically, DNS over HTTPS). Secure DNS server provider is Cloudflare (specifically, 1.1.1.1)." />
+		</CheckBox>
+
+
+		<Grid Grid.Row="3" ColumnDefinitions="*,*" RowDefinitions="*">
+			<Button VerticalAlignment="Center" HorizontalAlignment="Center"  Click="SaveBtn_Click">
+				<TextBlock TextAlignment="Center" VerticalAlignment="Center" Text="Save" />
+			</Button>
+			<Button Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Center" Click="CloseBtn_Click">
+				<TextBlock TextAlignment="Center" VerticalAlignment="Center" Text="Close" />
+			</Button>
+		</Grid>
+	</Grid>
+</Window>

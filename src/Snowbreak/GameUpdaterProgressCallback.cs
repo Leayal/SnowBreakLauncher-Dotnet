@@ -90,6 +90,8 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         internal void IncreaseTotalProgress() => Interlocked.Increment(ref this._TotalProgress);
         internal void IncreaseTotalProgress(in int increment) => Interlocked.Add(ref this._TotalProgress, increment);
 
+        internal long GetCurrentProgress() => Interlocked.Read(in this._CurrentProgress);
+
         internal void OnComplete()
         {
             this.AttachedParent.TotalDownloadProgress.IncreaseCurrentProgress();
