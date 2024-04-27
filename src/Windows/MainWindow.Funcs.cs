@@ -255,7 +255,7 @@ namespace Leayal.SnowBreakLauncher.Windows
             {
                 var cancelToken = newCancellation.Token;
 
-                await updater.UpdateGameClientAsync(skipCrcTableCache: skipCrcTableCache, progressCallback: progressCallback, cancellationToken: cancelToken);
+                await updater.UpdateGameClientAsync(fixMode: skipCrcTableCache, progressCallback: progressCallback, cancellationToken: cancelToken);
 
                 if (await updater.CheckForUpdatesAsync(cancelToken))
                 {

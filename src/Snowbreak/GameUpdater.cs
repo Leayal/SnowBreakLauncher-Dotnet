@@ -60,7 +60,7 @@ sealed class GameUpdater
                     {
                         if (!string.Equals(localPakInfo.hash, pakInfo.hash, StringComparison.OrdinalIgnoreCase)) return true;
                     }
-                    else return true; // Immediately return, not breaking out of loop.
+                    else return true; // Immediately return
                 }
                 return false;
             }
@@ -90,7 +90,7 @@ sealed class GameUpdater
 
     private readonly record struct DownloadResult(bool success, long fileLastWriteTimeInUnixSeconds);
 
-    public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, bool skipCrcTableCache = false, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
+    public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, bool fixMode = false, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var mgr = this.manager;
         var httpClient = SnowBreakHttpClient.Instance;
@@ -146,9 +146,13 @@ sealed class GameUpdater
                         if (cancellationToken.IsCancellationRequested) break;
 
                         var path_localPak = mgr.Files.GetFullPath(pak.name);
+
+                        // Would be nice if I do a hash table so that I can check if a file just need a rename instead of deleting and redownload the same file under a new name.
+                        // But too lazy for that, will do something about it later.
+
                         if (File.Exists(path_localPak))
                         {
-                            if (!skipCrcTableCache && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
+                            if (!fixMode && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
                             {
                                 if (!string.Equals(localPakInfo.hash, pak.hash, StringComparison.OrdinalIgnoreCase) || localPakInfo.sizeInBytes != pak.sizeInBytes)
                                 {
@@ -159,7 +163,6 @@ sealed class GameUpdater
                             }
                             else
                             {
-
                                 using (var fs = new FileStream(path_localPak, FileMode.Open, FileAccess.Read, FileShare.Read, 0))
                                 {
                                     if (fs.Length != pak.sizeInBytes)
@@ -443,8 +446,28 @@ sealed class GameUpdater
         {
             // Just want to ensure we finalize things
 
-            // Double ensure that we don't get any Pak archive left over from old major releases to cause data collisions.
-            if (bufferedLocalFileTable.Count != 0)
+            // Double ensure that we don't get any Pak archives left over from old major releases to cause data collisions.
+            if (fixMode)
+            {
+                var dataDirectory = mgr.Files.GetFullPath(Path.Join("Game", "Content"));
+                if (Directory.Exists(dataDirectory))
+                {
+                    foreach (var filename in Directory.EnumerateFiles(dataDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true, ReturnSpecialDirectories = false, AttributesToSkip = FileAttributes.None, MaxRecursionDepth = 30 }))
+                    {
+                        var mem_relativePath = filename.AsMemory(dataDirectory.Length + 1);
+                        var relativePath = string.Create(mem_relativePath.Length, mem_relativePath, (c, obj) =>
+                        { 
+                            obj.Span.CopyTo(c);
+                            c.Replace('\\', '/');
+                        });
+                        if (!remoteFilelist.ContainsKey(relativePath))
+                        {
+                            FileSystem.ForceDelete(filename);
+                        }
+                    }
+                }
+            }
+            else if (bufferedLocalFileTable.Count != 0)
             {
                 foreach (var pakName in bufferedLocalFileTable.Keys)
                 {
@@ -487,6 +510,9 @@ sealed class GameUpdater
                     writeStream.Write(newJsonDataBuffering.WrittenSpan);
                 }
             }
+
+            if (isEverythingDoneNicely)
+                File.WriteAllText(Path.Join(mgr.FullPathOfInstallationDirectory, "version.cfg"), "[game.exe]\r\nUniformGameVersion=" + (remoteManifest.version ?? string.Empty), System.Text.Encoding.ASCII);
 
             needUpdatedOnes.Dispose();
         }

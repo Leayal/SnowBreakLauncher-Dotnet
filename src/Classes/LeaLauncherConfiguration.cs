@@ -31,6 +31,15 @@ namespace Leayal.SnowBreakLauncher.Classes
         /// <remarks>Default is enabled. However, on system that have system-wide secure DNS, enabling this would make performance worse due to additional useless DNS resolve, disable this built-in DoH to make use of system-wide secure DNS instead.</remarks>
         public bool Networking_UseDoH { get; set; }
 
+        /// <summary>
+        /// As of now, this is reserved and will always be true, if I feel like it, the option will be available for users to customize the launcher's behavior to their liking.
+        /// But for now, too lazy to implement it that way, so the launcher will act as if this prop is true.
+        /// 
+        /// FixMode will always purge unknown data files (may remove mods)
+        /// Update may purge files which is not longer in the new manifest's file list.
+        /// </summary>
+        public bool ClientData_EnsureCleanWhenFixing { get; set; }
+
 #pragma warning disable CA1416 // Validate platform compatibility
 
         public void Reload()
@@ -61,11 +70,20 @@ namespace Leayal.SnowBreakLauncher.Classes
 
                     if (rootEle.TryGetProperty("networking_useDoH", out var prop_networking_useDoH))
                     {
-                        this.Networking_UseDoH = ToBool(in prop_wineUseUnixFS, true);
+                        this.Networking_UseDoH = ToBool(in prop_networking_useDoH, true);
                     }
                     else
                     {
                         this.Networking_UseDoH = true;
+                    }
+
+                    if (rootEle.TryGetProperty("clientdata_ensureNoExternalFiles", out var prop_clientdata_ensureNoExternalFiles))
+                    {
+                        this.ClientData_EnsureCleanWhenFixing = ToBool(in prop_clientdata_ensureNoExternalFiles, true);
+                    }
+                    else
+                    {
+                        this.ClientData_EnsureCleanWhenFixing = true;
                     }
                 }
             }
@@ -74,6 +92,7 @@ namespace Leayal.SnowBreakLauncher.Classes
                 this.WinePath = string.Empty;
                 this.WineUseUnixFileSystem = true;
                 this.Networking_UseDoH = true;
+                this.ClientData_EnsureCleanWhenFixing = true;
             }
         }
 
@@ -95,6 +114,10 @@ namespace Leayal.SnowBreakLauncher.Classes
                 if (!this.Networking_UseDoH)
                 {
                     jsonWriter.WriteBoolean("networking_useDoH", false);
+                }
+                if (!this.ClientData_EnsureCleanWhenFixing)
+                {
+                    jsonWriter.WriteBoolean("clientdata_ensureNoExternalFiles", false);
                 }
                 jsonWriter.WriteEndObject();
                 jsonWriter.Flush();
