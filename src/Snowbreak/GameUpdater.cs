@@ -106,12 +106,7 @@ sealed class GameUpdater
             task_getRemoteManifest = new ValueTask<GameClientManifestData>(httpClient.GetGameClientManifestAsync(cancellationToken));
         }
 
-#if NET8_0_OR_GREATER
-        // This is rather unsafe, but we are sure it's ImmutableDictionary unless the other source codes are changed.
-        ImmutableDictionary<string, PakEntry> bufferedLocalFileTable = localManifest.HasValue ? localManifest.Value.GetPakDictionary() : ImmutableDictionary<string, PakEntry>.Empty;
-#else
-        IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable = localManifest.HasValue ? localManifest.Value.GetPakDictionary() : FrozenDictionary<string, PakEntry>.Empty;
-#endif
+        FrozenDictionary<string, PakEntry> bufferedLocalFileTable = localManifest.HasValue ? localManifest.Value.GetPakDictionary() : FrozenDictionary<string, PakEntry>.Empty;
 
         var remoteManifest = await task_getRemoteManifest;
         var totalPak = remoteManifest.PakCount;

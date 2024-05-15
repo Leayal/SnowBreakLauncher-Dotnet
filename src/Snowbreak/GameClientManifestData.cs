@@ -341,38 +341,7 @@ public readonly struct GameClientManifestData : IDisposable
 
     public readonly string? pathOffset => this.GetString();
 
-#if NET8_0_OR_GREATER
-    public readonly ImmutableDictionary<string, PakEntry> GetPakDictionary()
-    {
-        if (this._doc.RootElement.TryGetProperty("paks", out var prop) && prop.ValueKind == JsonValueKind.Array)
-        {
-            var builder = ImmutableDictionary.CreateBuilder<string, PakEntry>(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
-            foreach (var pak in prop.EnumerateArray())
-            {
-                var pakInfo = new PakEntry(in pak);
-                var key = pakInfo.name;
-                if (builder.TryGetValue(key, out var oldEntry))
-                {
-                    if (!string.IsNullOrEmpty(pakInfo.hash) && !string.Equals(oldEntry.hash, pakInfo.hash, StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (pakInfo.bPrimary == true || string.IsNullOrEmpty(oldEntry.hash))
-                        {
-                            builder[pakInfo.name] = pakInfo;
-                        }
-                    }
-                }
-                else
-                {
-                    builder.Add(pakInfo.name, pakInfo);
-                }
-            }
-
-            return builder.ToImmutable();
-        }
-        return ImmutableDictionary<string, PakEntry>.Empty;
-    }
-#else
-    public readonly IReadOnlyDictionary<string, PakEntry> GetPakDictionary()
+    public readonly FrozenDictionary<string, PakEntry> GetPakDictionary()
     {
         if (this._doc.RootElement.TryGetProperty("paks", out var prop) && prop.ValueKind == JsonValueKind.Array)
         {
@@ -396,11 +365,10 @@ public readonly struct GameClientManifestData : IDisposable
                     dictionary.Add(pakInfo.name, pakInfo);
                 }
             }
-            return dictionary.AsReadOnly();
+            return FrozenDictionary.ToFrozenDictionary(dictionary, OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         }
         return FrozenDictionary<string, PakEntry>.Empty;
     }
-#endif
 
     public readonly IEnumerable<PakEntry> GetPaks()
     {

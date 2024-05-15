@@ -12,6 +12,6 @@ namespace Leayal.SnowBreakLauncher
 {
     static internal class AssemblyInfo
     {
-        public const string Version = "1.2.10";
+        public const string Version = "1.2.11";
     }
 }
