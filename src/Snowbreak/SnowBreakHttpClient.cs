@@ -104,7 +104,7 @@ sealed class SnowBreakHttpClient : HttpClient
                         // Attempt to craft the URL from the launcher version.
                         // As of writing this (27th April 2024), the minor version of launcher match with the DLC index of the URL.
                         // This should make the compatibility last for as long as they don't change this behavior
-                        if (Version.TryParse(spanStr_launcherVersion, out var versionObj) && versionObj.Minor > 0)
+                        if (resourceSrc == null && Version.TryParse(spanStr_launcherVersion, out var versionObj) && versionObj.Minor > 0)
                         {
                             resourceSrc = new Uri(string.Format(TemplateURL_RemoteDataResources, versionObj.Minor));
                         }

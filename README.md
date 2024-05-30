@@ -1,6 +1,9 @@
 # SnowBreakLauncher-Dotnet
  A custom launcher for [SnowBreak: Containment Zone](https://snowbreak.amazingseasun.com/), written in C# of .NET8.
  
+# IMPORTANT
+ **Currently, the launcher is broken and can't be used due to [the recent patching system changes](https://github.com/Leayal/SnowBreakLauncher-Dotnet/issues/5#issuecomment-2140717282).
+ You can't use the launcher until the code is updated to comply with the new patching system.**
 
 # Notes
  - Currently, this is a hobby project: The launcher can check for game's update, install game client, update the game client and start the game. I can only maintain it in free time and I'll prioritize bug-fixing over feature-adding.
