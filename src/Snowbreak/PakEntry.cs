@@ -15,7 +15,35 @@ public readonly struct PakEntry
         this.element = element;
     }
 
+    /* Sample
+    {
+      "name": "Game/Content/Paks/PAK_Game_Wwise_3-WindowsNoEditor.pak",
+      "hash": "7fcce4b0f9859e527e4ca1b3f529b467",
+      "sizeInBytes": 106001371,
+      "bPrimary": true,
+      "base": "bc14c6189f79cfcaabceccbb72fda8c1",
+      "diff": "a77e423db993eea365e249ab557d490c",
+      "diffSizeBytes": 19006788
+    },
+    
+    For non-primary
+
+    {
+      "name": "Game/Content/Paks/PAK_Game_Wwise_3-WindowsNoEditor_0_P.pak",
+      "hash": "8590e0e0c986fe6c53cc96991b4441c2",
+      "sizeInBytes": 7165947,
+      "bPrimary": true,
+      "base": "",
+      "diff": "",
+      "diffSizeBytes": 0
+    },
+    */
+
+    // I assume this is whether to check if the file need to match hash, or simply existence is enough
+    // true => requires hash check and exact match
+    // false => file just needs to exist, hash mismatch allowed
     public readonly bool? bPrimary => this.GetNullableBoolean();
+
     public readonly long sizeInBytes => this.GetLongNumber();
     /// <summary>Gets the MD5 hash of the file.</summary>
     public readonly string hash => this.GetString();
@@ -23,6 +51,10 @@ public readonly struct PakEntry
     /// <remarks>Use <seealso cref="DateTimeOffset.FromUnixTimeSeconds"/> to parse this number.</remarks>
     public readonly long? fastVerify => this.GetNullableNumber();
     public readonly string name => this.GetString();
+
+    public readonly long diffSizeBytes => this.GetLongNumber();
+    public readonly string @base => this.GetString("base");
+    public readonly string diff => this.GetString();
 
     private readonly uint GetUIntNumber([CallerMemberName] string? name = null)
     {

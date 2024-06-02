@@ -1,0 +1,3 @@
+[submodule "dependencies/SharpHDiffPatch-Dotnet"]
+	path = dependencies/SharpHDiffPatch-Dotnet
+	url = https://github.com/Leayal/SharpHDiffPatch-Dotnet

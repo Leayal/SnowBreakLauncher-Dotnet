@@ -70,4 +70,8 @@
   <ItemGroup>
     <AdditionalFiles Include="NativeMethods.txt" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\dependencies\SharpHDiffPatch-Dotnet\SharpHDiffPatch.Core\SharpHDiffPatch.Core.csproj" />
+  </ItemGroup>
 </Project>

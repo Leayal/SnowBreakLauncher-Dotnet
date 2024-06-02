@@ -100,14 +100,6 @@ sealed class SnowBreakHttpClient : HttpClient
                                 resourceSrc = new Uri(overrideString.EndsWith('/') ? overrideString : (overrideString + '/'));
                             }
                         }
-
-                        // Attempt to craft the URL from the launcher version.
-                        // As of writing this (27th April 2024), the minor version of launcher match with the DLC index of the URL.
-                        // This should make the compatibility last for as long as they don't change this behavior
-                        if (resourceSrc == null && Version.TryParse(spanStr_launcherVersion, out var versionObj) && versionObj.Minor > 0)
-                        {
-                            resourceSrc = new Uri(string.Format(TemplateURL_RemoteDataResources, versionObj.Minor));
-                        }
                         
                         if (resourceSrc == null)
                         {
@@ -181,12 +173,12 @@ sealed class SnowBreakHttpClient : HttpClient
         }  
     }
 
-    public Task<HttpResponseMessage> GetFileDownloadResponseAsync(in GameClientManifestData manifest, in PakEntry entry, CancellationToken cancellationToken = default)
+    public Task<HttpResponseMessage> GetFileDownloadResponseAsync(in GameClientManifestData manifest, in PakEntry entry, bool downloadDiffOnly, CancellationToken cancellationToken = default)
     {
         if (entry.Equals(PakEntry.Empty)) throw new ArgumentNullException(nameof(entry));
         // ArgumentException.ThrowIfNullOrWhiteSpace(entry.hash, nameof(entry));
 
-        return this.GetFileDownloadResponseFromFileHashAsync(in manifest, entry.hash, cancellationToken);
+        return this.GetFileDownloadResponseFromFileHashAsync(in manifest, downloadDiffOnly ? entry.diff : entry.hash, cancellationToken);
     }
 
     public async Task<LauncherNewsHttpResponse> GetLauncherNewsAsync(CancellationToken cancellationToken = default)

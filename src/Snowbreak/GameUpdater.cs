@@ -13,6 +13,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -90,6 +91,33 @@ sealed class GameUpdater
 
     private readonly record struct DownloadResult(bool success, long fileLastWriteTimeInUnixSeconds);
 
+    /* Sample
+    {
+      "name": "Game/Content/Paks/PAK_Game_Wwise_3-WindowsNoEditor.pak",
+      "hash": "7fcce4b0f9859e527e4ca1b3f529b467",
+      "sizeInBytes": 106001371,
+      "bPrimary": true,
+      "base": "bc14c6189f79cfcaabceccbb72fda8c1",
+      "diff": "a77e423db993eea365e249ab557d490c",
+      "diffSizeBytes": 19006788
+    },
+    
+    For non-primary
+
+    {
+      "name": "Game/Content/Paks/PAK_Game_Wwise_3-WindowsNoEditor_0_P.pak",
+      "hash": "8590e0e0c986fe6c53cc96991b4441c2",
+      "sizeInBytes": 7165947,
+      "bPrimary": true,
+      "base": "",
+      "diff": "",
+      "diffSizeBytes": 0
+    },
+    */
+
+    // maybe we don't need the .exe file at all.
+    // in-process library rule!!
+
     public async Task UpdateGameClientAsync(GameClientManifestData? remote_manifest = null, bool fixMode = false, GameUpdaterProgressCallback? progressCallback = null, CancellationToken cancellationToken = default)
     {
         var mgr = this.manager;
@@ -112,7 +140,7 @@ sealed class GameUpdater
         var totalPak = remoteManifest.PakCount;
 
         // Determine which file needs to be "updated" (it's actually a redownload anyway)
-        var needUpdatedOnes = new BlockingCollection<PakEntry>(totalPak);
+        var needUpdatedOnes = new BlockingCollection<Tuple<PakEntry, bool>>(totalPak);
         var finishedOnes = new ConcurrentDictionary<PakEntry, DownloadResult>(3, totalPak);
 
         progressCallback?.OnDisplayableProgressBar?.Invoke();
@@ -145,14 +173,28 @@ sealed class GameUpdater
                         // Would be nice if I do a hash table so that I can check if a file just need a rename instead of deleting and redownload the same file under a new name.
                         // But too lazy for that, will do something about it later.
 
+                        var debugging_name = pak.name;
+
                         if (File.Exists(path_localPak))
                         {
+                            string baseHash = pak.@base, diffHash = pak.diff;
+                            bool supportBinaryPatching = (!string.IsNullOrEmpty(baseHash) && !string.IsNullOrEmpty(diffHash));
+
                             if (!fixMode && bufferedLocalFileTable.TryGetValue(pak.name, out var localPakInfo) && IsFastVerifyMatchedUnsafe(path_localPak, localPakInfo.fastVerify) && !string.IsNullOrEmpty(localPakInfo.hash))
                             {
-                                if (!string.Equals(localPakInfo.hash, pak.hash, StringComparison.OrdinalIgnoreCase) || localPakInfo.sizeInBytes != pak.sizeInBytes)
+                                if (supportBinaryPatching)
+                                {
+                                    if (string.Equals(localPakInfo.hash, baseHash, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        callback_downloadCount?.IncreaseTotalProgress();
+                                        needUpdatedOnes.Add(new Tuple<PakEntry, bool>(pak, true));
+                                        continue;
+                                    }
+                                }
+                                if (!string.Equals(localPakInfo.hash, pak.hash, StringComparison.OrdinalIgnoreCase))
                                 {
                                     callback_downloadCount?.IncreaseTotalProgress();
-                                    needUpdatedOnes.Add(pak);
+                                    needUpdatedOnes.Add(new Tuple<PakEntry, bool>(pak, false));
                                     continue;
                                 }
                             }
@@ -160,19 +202,24 @@ sealed class GameUpdater
                             {
                                 using (var fs = new FileStream(path_localPak, FileMode.Open, FileAccess.Read, FileShare.Read, 0))
                                 {
-                                    if (fs.Length != pak.sizeInBytes)
-                                    {
-                                        callback_downloadCount?.IncreaseTotalProgress();
-                                        needUpdatedOnes.Add(pak);
-                                        continue;
-                                    }
                                     incrementalMD5.FillDataFromStream(fs, borrowed);
                                     var hashLenInBytes = incrementalMD5.GetHashAndReset(borrowed);
                                     var hash = Convert.ToHexString(new ReadOnlySpan<byte>(borrowed, 0, hashLenInBytes));
+
+                                    if (supportBinaryPatching)
+                                    {
+                                        if (string.Equals(hash, baseHash, StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            callback_downloadCount?.IncreaseTotalProgress();
+                                            needUpdatedOnes.Add(new Tuple<PakEntry, bool>(pak, true));
+                                            continue;
+                                        }
+                                    }
+
                                     if (!string.Equals(hash, pak.hash, StringComparison.OrdinalIgnoreCase))
                                     {
                                         callback_downloadCount?.IncreaseTotalProgress();
-                                        needUpdatedOnes.Add(pak);
+                                        needUpdatedOnes.Add(new Tuple<PakEntry, bool>(pak, false));
                                         continue;
                                     }
 
@@ -185,7 +232,7 @@ sealed class GameUpdater
                         else
                         {
                             callback_downloadCount?.IncreaseTotalProgress();
-                            needUpdatedOnes.Add(pak);
+                            needUpdatedOnes.Add(new Tuple<PakEntry, bool>(pak, false));
                         }
 
                         callback?.IncreaseCurrentProgress();
@@ -219,8 +266,9 @@ sealed class GameUpdater
                     var pathToPreReleaseDirectory = mgr.Files.PathToPreReleaseDirectory;
                     while (!needUpdatedOnes.IsCompleted && !cancellationToken.IsCancellationRequested)
                     {
-                        if (needUpdatedOnes.TryTake(out var pak))
+                        if (needUpdatedOnes.TryTake(out var tuple_downloadData))
                         {
+                            var pak = tuple_downloadData.Item1;
                             try
                             {
                                 var relativeFile = pak.name;
@@ -295,7 +343,10 @@ sealed class GameUpdater
                                     pathTo_LocalFileTmp = pathTo_LocalFile + ".dl_ing";
                                     var httpClient = SnowBreakHttpClient.Instance;
 
-                                    using (var response = await httpClient.GetFileDownloadResponseAsync(in remoteManifest, in pak, cancellationToken))
+                                    var isPatchingViaDiff = tuple_downloadData.Item2;
+                                    string hashOfDownloaded;
+
+                                    using (var response = await httpClient.GetFileDownloadResponseAsync(in remoteManifest, in pak, isPatchingViaDiff, cancellationToken))
                                     {
                                         if (!response.IsSuccessStatusCode)
                                         {
@@ -312,9 +363,16 @@ sealed class GameUpdater
                                                 Directory.CreateDirectory(directoryPath);
                                             }
                                             bool addRefSuccess = false;
-                                            using (var fHandle = File.OpenHandle(pathTo_LocalFileTmp, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, FileOptions.Asynchronous, contentLength))
+                                            using (var fHandle = File.OpenHandle(isPatchingViaDiff ? (pathTo_LocalFileTmp + ".bin") : pathTo_LocalFileTmp, FileMode.Create, FileAccess.ReadWrite, FileShare.Read, FileOptions.Asynchronous, contentLength))
                                             {
-                                                fHandle.DangerousAddRef(ref addRefSuccess);
+                                                if (isPatchingViaDiff)
+                                                {
+                                                    addRefSuccess = false;
+                                                }
+                                                else
+                                                {
+                                                    fHandle.DangerousAddRef(ref addRefSuccess);
+                                                }
                                                 using (var fs = new FileStream(fHandle, FileAccess.ReadWrite, 0 /* We use our big fat 64KB+ buffer above */))
                                                 {
                                                     fs.Position = 0;
@@ -333,17 +391,20 @@ sealed class GameUpdater
                                                     await fs.FlushAsync(cancellationToken);
 
                                                     var hashLenInBytes = md5Hasher.GetHashAndReset(borrowedBuffer);
-                                                    var hashOfDownloaded = Convert.ToHexString(borrowedBuffer, 0, hashLenInBytes);
+                                                    hashOfDownloaded = Convert.ToHexString(borrowedBuffer, 0, hashLenInBytes);
                                                     if (!cancellationToken.IsCancellationRequested)
                                                     {
-                                                        if (string.Equals(hashOfDownloaded, pak.hash, StringComparison.OrdinalIgnoreCase))
+                                                        if (!isPatchingViaDiff)
                                                         {
-                                                            isOkay = true;
-                                                            // Fix the length if necessary
-                                                            var currentLen = progressCallback != null ? progressCallback.GetCurrentProgress() : fs.Position;
-                                                            if (currentLen != fs.Length)
+                                                            if (string.Equals(hashOfDownloaded, pak.hash, StringComparison.OrdinalIgnoreCase))
                                                             {
-                                                                fs.SetLength(currentLen);
+                                                                isOkay = true;
+                                                                // Fix the length if necessary
+                                                                var currentLen = progressCallback != null ? progressCallback.GetCurrentProgress() : fs.Position;
+                                                                if (currentLen != fs.Length)
+                                                                {
+                                                                    fs.SetLength(currentLen);
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -362,6 +423,27 @@ sealed class GameUpdater
                                             }
                                             if (!addRefSuccess)
                                             {
+                                                if (!cancellationToken.IsCancellationRequested && isPatchingViaDiff)
+                                                {
+                                                    if (string.Equals(hashOfDownloaded, pak.diff, StringComparison.OrdinalIgnoreCase))
+                                                    {
+                                                        var hPatchFile = new Hpatchz(pathTo_LocalFileTmp + ".bin");
+                                                        try
+                                                        {
+                                                            await hPatchFile.Patch(pathTo_LocalFile, pathTo_LocalFileTmp, cancellationToken);
+                                                            isOkay = true;
+                                                        }
+                                                        catch
+                                                        {
+                                                            isOkay = false;
+                                                        }
+                                                        finally
+                                                        {
+                                                            File.Delete(hPatchFile.diffPath);
+                                                        }
+                                                    }
+                                                }
+
                                                 lastWriteTimeUnixSeconds = (new DateTimeOffset(File.GetLastWriteTimeUtc(pathTo_LocalFileTmp))).ToUnixTimeSeconds();
                                             }
                                         }
@@ -513,7 +595,7 @@ sealed class GameUpdater
         }
     }
 
-    static void WriteManifestDataTo(Utf8JsonWriter jsonwriter, in GameClientManifestData? localManifest, BlockingCollection<PakEntry> needUpdatedOnes, in bool isEverythingDoneNicely,
+    static void WriteManifestDataTo(Utf8JsonWriter jsonwriter, in GameClientManifestData? localManifest, BlockingCollection<Tuple<PakEntry, bool>> needUpdatedOnes, in bool isEverythingDoneNicely,
                 in GameClientManifestData remoteManifest, ConcurrentDictionary<PakEntry, DownloadResult> finishedOnes, IReadOnlyDictionary<string, PakEntry> bufferedLocalFileTable)
     {
         jsonwriter.WriteStartObject();
