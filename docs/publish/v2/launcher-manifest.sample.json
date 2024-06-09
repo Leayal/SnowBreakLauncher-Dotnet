@@ -1,0 +1,34 @@
+// This file is just an sample file, unused by the launcher
+// To let other maintainer or forks know the format and data structure to avoid format/parsing error from launcher
+// The launcher itself will ignore these comments. However, if the launcher crashes upon startup with JSON error, try remove these comments on the production version of launcher-manifest.json
+{
+	// Must be an array of strings.
+	// In case there is only one domain from publisher, put it as an array with only 1 string element
+	// DOES NOT support string value directly
+	"domains": [
+		"snowbreak-dl.amazingseasuncdn.com",
+		"snowbreak-dl-cy.amazingseasuncdn.com",
+		"snowbreak-dl-akm.amazingseasuncdn.com"
+	],
+	/* E.g with only 1 domain name:
+	"domains": [
+		"snowbreak-dl.amazingseasuncdn.com"
+	],
+	*/
+	
+	// Value must be a string.
+	// The launcher will parse the string below and used .NET's string.Format to form the real URL (with the domain name(s) above).
+	// The "{0}" is not required, it is there to let launcher know where to replace the domain name.
+	// Without "{0}", the URL will be treated as literal and be used as-is.
+	"default": "https://{0}/118c343979b2407f4a6b3ad2b84d6d79/PC/updates/",
+	
+	// Must be an object. With value data type is string only.
+	// The launcher will parse the strings in values below and used .NET's string.Format to form the real URL (with the domain name(s) above).
+	// The "{0}" is not required, it is there to let launcher know where to replace the domain name.
+	// Without "{0}", the URL will be treated as literal and be used as-is.
+	"overrides": {
+		"1.8.0": "https://{0}/118c343979b2407f4a6b3ad2b84d6d79/PC/updates/",
+		"1.7.0": "https://{0}/DLC7/PC/updates/",
+		"1.6.0": "https://{0}/DLC6/PC/updates/"
+	}
+}
