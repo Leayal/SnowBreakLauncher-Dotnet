@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak
@@ -27,12 +28,15 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         private readonly GameUpdaterProgressCallback AttachedParent;
         private long _CurrentProgress, _TotalProgress;
         private string _Filename = string.Empty;
-        public bool HasChange { get; private set; }
+        public bool HasChange { [MethodImpl(MethodImplOptions.AggressiveInlining)] get; private set; }
 
-        public bool IsDone { get; set; }
+        public bool IsDone { [MethodImpl(MethodImplOptions.AggressiveInlining)] get; set; }
+
+        public bool IsInHPatchZ { [MethodImpl(MethodImplOptions.AggressiveInlining)] get; private set; }
 
         public string Filename
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Interlocked.CompareExchange(ref this._Filename, string.Empty, string.Empty);
             internal set
             {
@@ -42,6 +46,7 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         }
         public long CurrentProgress
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Interlocked.Read(ref this._CurrentProgress);
             internal set
             {
@@ -51,6 +56,7 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
         }
         public long TotalProgress
         {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get => Interlocked.Read(ref this._TotalProgress);
             internal set
             {
@@ -92,10 +98,23 @@ namespace Leayal.SnowBreakLauncher.Snowbreak
 
         internal long GetCurrentProgress() => Interlocked.Read(in this._CurrentProgress);
 
+        internal void OnStartHPatchZ(in long totalProgress)
+        {
+            Interlocked.Exchange(ref this._CurrentProgress, 0);
+            Interlocked.Exchange(ref this._TotalProgress, totalProgress);
+            this.IsInHPatchZ = true;
+        }
+
+        internal void SetHPatchZCurrentProgress(in long currentProgress)
+        {
+            Interlocked.Exchange(ref this._CurrentProgress, currentProgress);
+        }
+
         internal void OnComplete()
         {
             this.AttachedParent.TotalDownloadProgress.IncreaseCurrentProgress();
             this.IsDone = true;
+            this.IsInHPatchZ = false;
         }
     }
 }

@@ -14,6 +14,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using SharpHDiffPatch.Core.Event;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
@@ -428,8 +429,18 @@ sealed class GameUpdater
                                                     if (string.Equals(hashOfDownloaded, pak.diff, StringComparison.OrdinalIgnoreCase))
                                                     {
                                                         var hPatchFile = new Hpatchz(pathTo_LocalFileTmp + ".bin");
+                                                        EventHandler<PatchEvent>? hPatchprogressCallback = null;
+                                                        if (progressCallback != null)
+                                                        {
+                                                            progressCallback.OnStartHPatchZ(hPatchFile.DiffSize);
+                                                            hPatchprogressCallback = (eventDispatcher, ev) =>
+                                                            {
+                                                                progressCallback.SetHPatchZCurrentProgress(ev.CurrentSizePatched);
+                                                            };
+                                                        }
                                                         try
                                                         {
+                                                            if (progressCallback != null) hPatchFile.PatchEvent += hPatchprogressCallback;
                                                             await hPatchFile.Patch(pathTo_LocalFile, pathTo_LocalFileTmp, cancellationToken);
                                                             isOkay = true;
                                                         }
@@ -439,7 +450,8 @@ sealed class GameUpdater
                                                         }
                                                         finally
                                                         {
-                                                            File.Delete(hPatchFile.diffPath);
+                                                            if (progressCallback != null) hPatchFile.PatchEvent -= hPatchprogressCallback;
+                                                            File.Delete(hPatchFile.HDiffPath);
                                                         }
                                                     }
                                                 }

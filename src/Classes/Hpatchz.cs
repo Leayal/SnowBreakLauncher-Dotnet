@@ -10,42 +10,33 @@ using SharpHDiffPatch.Core.Event;
 using SharpHDiffPatch.Core.Patch;
 using Avalonia.Controls.Shapes;
 
-
 namespace Leayal.SnowBreakLauncher.Classes
 {
-    /// <summary>Just a facade</summary>
     sealed class Hpatchz
     {
-        /* Already Quiet by default
-        static Hpatchz()
-        {
-            HDiffPatch.LogVerbosity = Verbosity.Quiet;
-        }
-        */
-        // Have to self-fix it
-
-        private readonly HeaderInfo headerInfo;
-        private readonly DataReferenceInfo referenceInfo;
-        public readonly string diffPath;
-        private readonly bool isPatchDir;
+        private readonly HDiffPatch hDiffPatchFile;
 
         public long DiffSize
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.headerInfo.newDataSize;
+            get => this.hDiffPatchFile.NewDataSize;
+        }
+
+        public string HDiffPath
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get => this.hDiffPatchFile.diffPath;
         }
 
         public Hpatchz(string hDiffFile)
         {
-            this.diffPath = hDiffFile;
-            
-            using (var diffStream = new FileStream(hDiffFile, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.SequentialScan))
-            {
-                this.isPatchDir = Header.TryParseHeaderInfo(diffStream, hDiffFile, out HeaderInfo headerInfo, out DataReferenceInfo referenceInfo);
+            this.hDiffPatchFile = new HDiffPatch(hDiffFile);
+        }
 
-                this.headerInfo = headerInfo;
-                this.referenceInfo = referenceInfo;
-            }
+        public event EventHandler<PatchEvent> PatchEvent
+        {
+            add => this.hDiffPatchFile.Event.PatchEvent += value;
+            remove => this.hDiffPatchFile.Event.PatchEvent -= value;
         }
 
         // Currently, the internal code of HDiffPatch doesn't have instances of patching, so progress tracking per instance isn't possible.
@@ -59,15 +50,9 @@ namespace Leayal.SnowBreakLauncher.Classes
                 if (obj == null) throw new InvalidOperationException(); // Can't be here anyway
                 var (myself, originalFile, outputFile, cancellation) = ((Tuple<Hpatchz, string, string, CancellationToken>)obj);
 
-                var headerInfo = myself.headerInfo;
+                myself.hDiffPatchFile.Patch(originalFile, outputFile, cancellation);
 
-                IPatch patcher = (myself.isPatchDir && headerInfo.isInputDir && headerInfo.isOutputDir) ?
-                new PatchDir(headerInfo, myself.referenceInfo, myself.diffPath, cancellation) 
-                : new PatchSingle(myself.headerInfo, cancellation);
-
-                patcher.Patch(originalFile, outputFile, true, false, true);
-
-            }, new Tuple<Hpatchz, string, string,CancellationToken> (this, originalFile, outputFile, cancellation), cancellation, TaskCreationOptions.LongRunning, TaskScheduler.Current ?? TaskScheduler.Default);
+            }, new Tuple<Hpatchz, string, string, CancellationToken> (this, originalFile, outputFile, cancellation), cancellation, TaskCreationOptions.LongRunning, TaskScheduler.Current ?? TaskScheduler.Default);
         }
     }
 }

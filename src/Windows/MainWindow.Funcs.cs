@@ -226,11 +226,17 @@ namespace Leayal.SnowBreakLauncher.Windows
                     2 = Minimum
                     3 = Maximum
                     */
-                    var oldFilename = attachedprogressbar.Tag as string;
-                    if (!string.Equals(oldFilename, progress.Filename, StringComparison.Ordinal))
+                    var oldProgressState = attachedprogressbar.Tag as Tuple<string, bool>;
+                    string? oldFilename = oldProgressState?.Item1 ?? null;
+                    bool isInHPatchZ = oldProgressState?.Item2 ?? false;
+
+                    var newstate_IsInHPatchZ = progress.IsInHPatchZ;
+                    var newstate_Filename = progress.Filename;
+
+                    if (!string.Equals(oldFilename, newstate_Filename, StringComparison.Ordinal) || isInHPatchZ != newstate_IsInHPatchZ)
                     {
-                        attachedprogressbar.Tag = progress.Filename;
-                        attachedprogressbar.ProgressTextFormat = string.Concat(Path.GetFileName(progress.Filename.AsSpan()), " ({1}%)");
+                        attachedprogressbar.Tag = new Tuple<string, bool>(newstate_Filename, newstate_IsInHPatchZ);
+                        attachedprogressbar.ProgressTextFormat = string.Concat(isInHPatchZ ? "Binary patching:" : "Downloading", Path.GetFileName(newstate_Filename.AsSpan()), " ({1}%)");
                     }
                     if (progress.IsDone)
                     {
