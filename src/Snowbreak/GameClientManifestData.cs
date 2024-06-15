@@ -285,45 +285,31 @@ public readonly struct GameClientManifestData : IDisposable
 
     public static GameClientManifestData? CreateFromLocalFile(string filepath)
     {
-        if (OperatingSystem.IsWindows())
+        static Stream PlatformDependant_OpenReadFileStream(string path)
         {
-            using (var fs = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 0, false))
+            if (OperatingSystem.IsWindows())
             {
-                if (fs.Length == 0) return null;
-                using (var sr = new StreamReader(fs, bufferSize: 4096))
-                {
-                    var jsonstring = sr.ReadToEnd();
-                    if (string.IsNullOrEmpty(jsonstring)) return null;
-                    return new GameClientManifestData(JsonDocument.Parse(jsonstring));
-                }
+                return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 0, false);
+            }
+            else
+            {
+                var broker = OpenFile(path);
+                return broker.OpenRead();
             }
         }
-        else
+        using (var fs = PlatformDependant_OpenReadFileStream(filepath))
         {
-            var broker = OpenFile(filepath);
-            using (var reader = broker.OpenRead())
+            if (fs.Length == 0) return null;
+            using (var sr = new StreamReader(fs, bufferSize: 4096))
             {
-                if (reader.Length == 0) return null;
-                using (var sr = new StreamReader(reader, bufferSize: 4096))
-                {
-                    var jsonstring = sr.ReadToEnd();
-                    if (string.IsNullOrEmpty(jsonstring)) return null;
-                    return new GameClientManifestData(JsonDocument.Parse(jsonstring));
-                }
+                var jsonstring = sr.ReadToEnd();
+                if (string.IsNullOrEmpty(jsonstring)) return null;
+                return new GameClientManifestData(JsonDocument.Parse(jsonstring));
             }
         }
     }
 
-    /* Old code, which was supposed to work fine, but didn't.
-    public static GameClientManifestData CreateFromLocalFile(string filepath)
-    {
-        using (var fs = new FileStream(filepath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, 0, false))
-        using (var sr = new StreamReader(fs, bufferSize: 4096))
-        {
-            return new GameClientManifestData(JsonDocument.Parse(sr.ReadToEnd()));
-        }
-    }
-    */
+
 
     private readonly JsonDocument _doc;
     public readonly Uri? AssociatedUrl;

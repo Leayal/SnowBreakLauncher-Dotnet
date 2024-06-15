@@ -1,5 +1,7 @@
 ﻿using Avalonia.Controls;
 using System;
+using System.Diagnostics;
+using System.Threading;
 
 namespace Leayal.SnowBreakLauncher.Controls
 {
@@ -17,8 +19,10 @@ namespace Leayal.SnowBreakLauncher.Controls
 
     public class Clickable<T> : IDisposable where T : Control
     {
+        private static readonly TimeSpan validDurationForClicking = TimeSpan.FromMilliseconds(400);
         private bool _previouslyClickedOnMe;
         private readonly T target;
+        private long _tickClicked;
 
         public Clickable(T control)
         {
@@ -43,6 +47,7 @@ namespace Leayal.SnowBreakLauncher.Controls
 
         private void Control_PointerExited(object? sender, Avalonia.Input.PointerEventArgs e)
         {
+            this._tickClicked = 0;
             this._previouslyClickedOnMe = false;
             this.target.PointerPressed -= this.Control_PointerPressed;
             this.target.PointerReleased -= this.Control_PointerReleased;
@@ -53,9 +58,22 @@ namespace Leayal.SnowBreakLauncher.Controls
             if (e.Pointer.Type == Avalonia.Input.PointerType.Mouse && e.InitialPressMouseButton != Avalonia.Input.MouseButton.Left) return;
             var oldVal = this._previouslyClickedOnMe;
             this._previouslyClickedOnMe = false;
-            if (oldVal)
+            var oldTickWhenPressed = Interlocked.Exchange(ref this._tickClicked, 0);
+            if (oldVal && oldTickWhenPressed > 0)
             {
-                this.Click?.Invoke(this.target, e);
+                TimeSpan duration;
+                if (Stopwatch.IsHighResolution)
+                {
+                    duration = Stopwatch.GetElapsedTime(oldTickWhenPressed);
+                }
+                else
+                {
+                    duration = DateTime.Now - DateTime.FromBinary(oldTickWhenPressed);
+                }
+                if (duration <= validDurationForClicking)
+                {
+                    this.Click?.Invoke(this.target, e);
+                }
             }
         }
 
@@ -64,10 +82,12 @@ namespace Leayal.SnowBreakLauncher.Controls
             if (e.Pointer.Type == Avalonia.Input.PointerType.Mouse)
             {
                 this._previouslyClickedOnMe = e.GetCurrentPoint(sender as Control).Properties.IsLeftButtonPressed;
+                Interlocked.Exchange(ref this._tickClicked, Stopwatch.IsHighResolution ? Stopwatch.GetTimestamp() : DateTime.Now.ToBinary());
                 return;
             }
 
             this._previouslyClickedOnMe = true;
+            Interlocked.Exchange(ref this._tickClicked, Stopwatch.IsHighResolution ? Stopwatch.GetTimestamp() : DateTime.Now.ToBinary());
         }
 
         private void Btn_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e) => this.Click?.Invoke(this.target, e);
