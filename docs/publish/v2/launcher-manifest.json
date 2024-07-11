@@ -4,8 +4,9 @@
 		"snowbreak-dl-cy.amazingseasuncdn.com",
 		"snowbreak-dl-akm.amazingseasuncdn.com"
 	],
-	"default": "https://{0}/118c343979b2407f4a6b3ad2b84d6d79/PC/updates/",
+	"default": "https://{0}/6e5452634164107ee3c3cfd6efcdf55f/PC/updates/",
 	"overrides": {
+		"2.0.0": "https://{0}/6e5452634164107ee3c3cfd6efcdf55f/PC/updates/",
 		"1.8.0": "https://{0}/118c343979b2407f4a6b3ad2b84d6d79/PC/updates/",
 		"1.7.0": "https://{0}/DLC7/PC/updates/",
 		"1.6.0": "https://{0}/DLC6/PC/updates/"
