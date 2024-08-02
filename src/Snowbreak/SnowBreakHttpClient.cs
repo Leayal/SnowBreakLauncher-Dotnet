@@ -363,7 +363,7 @@ sealed class SnowBreakHttpClient : HttpClient
                                 if (scanFoundStart != -1 && scanFoundEnd != -1)
                                 {
                                     var jsonLengthInBytes = (int)((scanFoundEnd + 1) - scanFoundStart);
-                                    if (false && tmpbuffer.Length >= jsonLengthInBytes)
+                                    if (tmpbuffer.Length >= jsonLengthInBytes)
                                     {
                                         localStream.Position = scanFoundStart;
                                         await localStream.ReadExactlyAsync(tmpbuffer, 0, jsonLengthInBytes, cancellationToken);
@@ -371,10 +371,17 @@ sealed class SnowBreakHttpClient : HttpClient
                                     }
                                     else
                                     {
-                                        var resultArray = new byte[jsonLengthInBytes];
-                                        localStream.Position = scanFoundStart;
-                                        await localStream.ReadExactlyAsync(resultArray, cancellationToken);
-                                        officialJsonDataRaw = encodingANSICompat.GetString(resultArray);
+                                        var encodeBuffer = ArrayPool<byte>.Shared.Rent(jsonLengthInBytes);
+                                        try
+                                        {
+                                            localStream.Position = scanFoundStart;
+                                            await localStream.ReadExactlyAsync(encodeBuffer, 0, jsonLengthInBytes, cancellationToken);
+                                            officialJsonDataRaw = encodingANSICompat.GetString(encodeBuffer, 0, jsonLengthInBytes);
+                                        }
+                                        finally
+                                        {
+                                            ArrayPool<byte>.Shared.Return(encodeBuffer);
+                                        }
                                     }
                                 }
                             }
