@@ -11,5 +11,9 @@
 		"1.8.0": "https://{0}/118c343979b2407f4a6b3ad2b84d6d79/PC/updates/",
 		"1.7.0": "https://{0}/DLC7/PC/updates/",
 		"1.6.0": "https://{0}/DLC6/PC/updates/"
+	},
+	"scannerSettings": {
+		"start": "{\"appUpdateURL\":\"https://snowbreak-content.amazingseasuncdn.com/ob202307/launcher/seasun/updates/\"",
+		"end": "}"
 	}
 }
