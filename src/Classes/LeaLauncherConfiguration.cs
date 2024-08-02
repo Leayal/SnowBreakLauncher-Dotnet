@@ -31,12 +31,20 @@ namespace Leayal.SnowBreakLauncher.Classes
         /// <remarks>Default is enabled. However, on system that have system-wide secure DNS, enabling this would make performance worse due to additional useless DNS resolve, disable this built-in DoH to make use of system-wide secure DNS instead.</remarks>
         public bool Networking_UseDoH { get; set; }
 
+        /// <summary>Get or sets whether the launcher is allowed to read manifest data from the official launcher.</summary>
+        /// <remarks>Default is disable. But recommended to enable this, not only the official launcher as a backup plan when this launcher stops working, this launcher can try fetching the update resource URL from the official launcher's binary.</remarks>
+        public bool AllowFetchingOfficialLauncherManifestData { get; set; }
+
+        /// <summary>Get or sets whether the launcher is use as much memory as possible when fetching manifest data from official launcher.</summary>
+        /// <remarks>Default is disable. When enabled, avoid wearing disks by using memory to store downloaded data.</remarks>
+        public bool AllowFetchingOfficialLauncherManifestDataInMemory { get; set; }
+
         /// <summary>
         /// As of now, this is reserved and will always be true, if I feel like it, the option will be available for users to customize the launcher's behavior to their liking.
         /// But for now, too lazy to implement it that way, so the launcher will act as if this prop is true.
         /// 
         /// FixMode will always purge unknown data files (may remove mods)
-        /// Update may purge files which is not longer in the new manifest's file list.
+        /// Update may purge files which is no longer in the new manifest's file list.
         /// </summary>
         public bool ClientData_EnsureCleanWhenFixing { get; set; }
 
@@ -85,6 +93,24 @@ namespace Leayal.SnowBreakLauncher.Classes
                     {
                         this.ClientData_EnsureCleanWhenFixing = true;
                     }
+
+                    if (rootEle.TryGetProperty("allowFetchingOfficialLauncherManifestData", out var prop_AllowFetchingOfficialLauncherManifestData))
+                    {
+                        this.AllowFetchingOfficialLauncherManifestData = ToBool(in prop_AllowFetchingOfficialLauncherManifestData, true);
+                    }
+                    else
+                    {
+                        this.AllowFetchingOfficialLauncherManifestData = true;
+                    }
+
+                    if (rootEle.TryGetProperty("allowFetchingOfficialLauncherManifestDataInMemory", out var prop_AllowFetchingOfficialLauncherManifestDataInMemory))
+                    {
+                        this.AllowFetchingOfficialLauncherManifestDataInMemory = ToBool(in prop_AllowFetchingOfficialLauncherManifestDataInMemory, false);
+                    }
+                    else
+                    {
+                        this.AllowFetchingOfficialLauncherManifestDataInMemory = false;
+                    }
                 }
             }
             catch (JsonException)
@@ -118,6 +144,14 @@ namespace Leayal.SnowBreakLauncher.Classes
                 if (!this.ClientData_EnsureCleanWhenFixing)
                 {
                     jsonWriter.WriteBoolean("clientdata_ensureNoExternalFiles", false);
+                }
+                if (!this.AllowFetchingOfficialLauncherManifestData)
+                {
+                    jsonWriter.WriteBoolean("allowFetchingOfficialLauncherManifestData", false);
+                }
+                if (this.AllowFetchingOfficialLauncherManifestDataInMemory)
+                {
+                    jsonWriter.WriteBoolean("allowFetchingOfficialLauncherManifestDataInMemory", true);
                 }
                 jsonWriter.WriteEndObject();
                 jsonWriter.Flush();

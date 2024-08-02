@@ -19,6 +19,8 @@ public partial class LauncherSettings : Window
         {
             var conf = app.LeaLauncherConfig;
             this.CheckBox_Networking_UseDoH.IsChecked = conf.Networking_UseDoH;
+            this.CheckBox_AllowFetchingManifestFromOfficial.IsChecked = conf.AllowFetchingOfficialLauncherManifestData;
+            this.CheckBox_AllowFetchingManifestFromOfficialInMemory.IsChecked = conf.AllowFetchingOfficialLauncherManifestDataInMemory;
         }
     }
 
@@ -36,6 +38,9 @@ public partial class LauncherSettings : Window
                 var conf = app.LeaLauncherConfig;
                 var val_CheckBox_Networking_UseDoH = (this.CheckBox_Networking_UseDoH.IsChecked == true);
                 conf.Networking_UseDoH = val_CheckBox_Networking_UseDoH;
+
+                conf.AllowFetchingOfficialLauncherManifestData = (this.CheckBox_AllowFetchingManifestFromOfficial.IsChecked == true);
+                conf.AllowFetchingOfficialLauncherManifestDataInMemory = (this.CheckBox_AllowFetchingManifestFromOfficialInMemory.IsChecked == true);
 
                 SnowBreakHttpClient.Instance.EnableDnsOverHttps = val_CheckBox_Networking_UseDoH;
 

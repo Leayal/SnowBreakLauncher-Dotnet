@@ -7,15 +7,23 @@
 		WindowStartupLocation="CenterOwner" CanResize="False"  ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaToDecorationsHint="True"
         x:Class="Leayal.SnowBreakLauncher.LauncherSettings"
         Title="Launcher Settings">
-	<Grid ColumnDefinitions="*" RowDefinitions="Auto,Auto,*,Auto">
-		<TextBlock TextAlignment="Center" Text="Launcher Settings" FontSize="22" Margin="5" />
+	<Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
+		<TextBlock TextAlignment="Center" Grid.ColumnSpan="2" Text="Launcher Settings" FontSize="22" Margin="5" />
 
-		<CheckBox Grid.Row="1"  VerticalAlignment="Center" x:Name="CheckBox_Networking_UseDoH" ToolTip.Tip="Use secure DNS protocol to resolve domain names into IP addresses (specifically, DNS over HTTPS). Secure DNS server provider is Cloudflare (specifically, 1.1.1.1).">
+		<CheckBox Grid.Row="1" Grid.ColumnSpan="2" VerticalAlignment="Center" x:Name="CheckBox_Networking_UseDoH" ToolTip.Tip="Use secure DNS protocol to resolve domain names into IP addresses (specifically, DNS over HTTPS). Secure DNS server provider is Cloudflare (specifically, 1.1.1.1).">
 			<TextBlock VerticalAlignment="Center" Text="Use secure DNS Resolver (Cloudflare DNS over HTTPS)" ToolTip.Tip="Use secure DNS protocol to resolve domain names into IP addresses (specifically, DNS over HTTPS). Secure DNS server provider is Cloudflare (specifically, 1.1.1.1)." />
+		</CheckBox>
+		
+		<CheckBox Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Center" x:Name="CheckBox_AllowFetchingManifestFromOfficial" ToolTip.Tip="Allow this launcher to fetch the resource manifest data (this data is used to locate the game client's files) from official launcher. This may result in partial launcher downloads.">
+			<TextBlock VerticalAlignment="Center" Text="Allow fetching manifest data from official launcher" ToolTip.Tip="Allow this launcher to fetch the resource manifest data (this data is used to locate the game client's files) from official launcher. This may result in partial launcher downloads." />
+		</CheckBox>
+			
+		<CheckBox Grid.Row="3" Grid.Column="1" VerticalAlignment="Center" x:Name="CheckBox_AllowFetchingManifestFromOfficialInMemory" ToolTip.Tip="Allow launcher to partially download official launcher into memory instead of into disks.">
+			<TextBlock VerticalAlignment="Center" Text="Allow using memory space instead of disk" ToolTip.Tip="Allow launcher to partially download official launcher into memory instead of into disks." />
 		</CheckBox>
 
 
-		<Grid Grid.Row="3" ColumnDefinitions="*,*" RowDefinitions="*">
+		<Grid Grid.Row="4" Grid.ColumnSpan="2" ColumnDefinitions="*,*" RowDefinitions="*">
 			<Button VerticalAlignment="Center" HorizontalAlignment="Center"  Click="SaveBtn_Click">
 				<TextBlock TextAlignment="Center" VerticalAlignment="Center" Text="Save" />
 			</Button>

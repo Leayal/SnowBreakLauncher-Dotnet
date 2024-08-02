@@ -44,6 +44,8 @@ sealed class GameUpdater
         // In case there nothing at all, should result in redownload the whole game.
         if (!_localManifest.HasValue) return true;
 
+
+
         using (var localManifest = _localManifest.Value)
         using (var manifestData = await httpClient.GetGameClientManifestAsync(cancellationToken))
         {
