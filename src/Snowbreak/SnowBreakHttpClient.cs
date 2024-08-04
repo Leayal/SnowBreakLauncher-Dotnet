@@ -19,6 +19,13 @@ namespace Leayal.SnowBreakLauncher.Snowbreak;
 
 sealed class SnowBreakHttpClient : HttpClient
 {
+    private const int ScanSettings_DownloadSizeLimit = 1024 * 1024 * 500, // Limit 500MB as we don't want potential risk of bombing.
+
+        // 1MB chunk each pull, if this is too big, around 500KB is optimal choice, too.
+        // This isn't really matter unless your internet is unstable and timeout may happend before 1MB is fully downloaded.
+        // By reducing the size, we can meet the time limit per each "Read" operation.
+        DownloadChunkSize = 1024 * 1024;
+
     private const string TemplateURL_RemoteDataResource = "https://{0}/{1}/PC/updates/", // {0}, {1} was for string.Format method.
         TemplateURL_LauncherBaseUrl = "https://snowbreak-content.amazingseasuncdn.com/ob202307/",
         TemplateURL_LauncherBinary = TemplateURL_LauncherBaseUrl + "/launcher/seasun/updates/{0}.exe",
@@ -180,10 +187,29 @@ sealed class SnowBreakHttpClient : HttpClient
                 {
                     response.EnsureSuccessStatusCode();
                     var header_contentLength = response.Content.Headers.ContentLength;
-                    var contentLength = header_contentLength.HasValue ? header_contentLength.Value : 0;
-                    var allocateSize = (int)Math.Min(contentLength, 1024 * 1024 * 700); // Limit max 700MB
+                    
+                    long contentLength;
+                    int byteToDownload;
+                    TaskAllocatedResources_FetchResourceURL? resource;
+                    if (header_contentLength.HasValue && (contentLength = header_contentLength.Value) > 0)
+                    {
+                        byteToDownload = (int)Math.Min(contentLength, ScanSettings_DownloadSizeLimit); // If the known size exceeds our limit, restrain it.
+                        resource = new TaskAllocatedResources_FetchResourceURL(allowMemoryHunryMode, byteToDownload);
+                    }
+                    else
+                    {
+                        byteToDownload = ScanSettings_DownloadSizeLimit; // Since we don't know the size of launcher before downloading. Follow our upper limit and abort if the download exceeds limit..
 
-                    var resource = new TaskAllocatedResources_FetchResourceURL(allowMemoryHunryMode, allocateSize);
+                        /* We can fall-back to use disk in case the download size is unknown
+                         * And because we're using disk without knowing file size, pre-allocating 0 byte is prefered.
+                        resource = new TaskAllocatedResources_FetchResourceURL(false, 0);
+                        */
+                        // Or we will respect our user's choice with full sincere: Still use memory space.
+                        // This will take a huge hit because we will allocate a "ScanSettings_DownloadSizeLimit" worth of memory. (500MB if you don't change settings, it's really huge and we may not even use 10% of it)
+                        // In case you don't want this behavior, either comment the next line while uncomment the line above to change behavior.
+                        resource = new TaskAllocatedResources_FetchResourceURL(allowMemoryHunryMode, allowMemoryHunryMode ? ScanSettings_DownloadSizeLimit : 0);
+                        // resource = new TaskAllocatedResources_FetchResourceURL(false, 0); // Uncomment this line while comment the line above to change behavior.
+                    }
 
                     var encodingANSICompat = Encoding.GetEncoding(28591); // 28591 is ANSI-compatible
                     // var searchBytes = encodingANSICompat.GetBytes($"\"appVersion\":\"{launcherLatestVersion}\"");
@@ -195,17 +221,12 @@ sealed class SnowBreakHttpClient : HttpClient
                     byte[]? tmpbuffer = null;
                     try
                     {
-                        // 1MB chunk each pull, if this is too big, around 500KB is optimal choice, too.
-                        // This isn't really matter unless your internet is unstable and timeout may happend before 1MB is fully downloaded.
-                        // By reducing the size, we can meet the time limit per each "Read" operation.
-                        const int DownloadChunkSize = 1024 * 1024;
-
-                        int byteToDownload = allocateSize, chunkRead = 0, byteRead = 0;
-
+                        int chunkRead = 0, byteRead = 0;
                         long lastScanPosStart = 0, lastScanPosEnd = 0, scanFoundStart = -1, scanFoundEnd = -1;
 
                         using (var responseContentStream = response.Content.ReadAsStream(cancellationToken))
                         {
+                            // We can risk ourselves when the contentlength is unknown because it could be over our limit
                             if (resource.IsMemoryHungry)
                             {
                                 var arr = resource.arr;
@@ -215,7 +236,7 @@ sealed class SnowBreakHttpClient : HttpClient
                                     {
                                         byteRead += chunkRead;
                                         byteToDownload -= chunkRead;
-                                        if (((byteRead - lastScanPosStart) >= DownloadChunkSize) || byteToDownload == 0)
+                                        if (((byteRead - lastScanPosStart) >= DownloadChunkSize) || byteToDownload <= 0)
                                         {
                                             var startScanPos = (int)(lastScanPosStart == 0 ? 0 : (lastScanPosStart - searchStartingBytes.Length));
                                             scanFoundStart = searchEngine_Start.IndexOf(arr, startScanPos, byteRead);
@@ -253,7 +274,7 @@ sealed class SnowBreakHttpClient : HttpClient
                                         {
                                             byteRead += chunkRead;
                                             byteToDownload -= chunkRead;
-                                            if (((byteRead - lastScanPosEnd) >= DownloadChunkSize) || byteRead == byteToDownload)
+                                            if (((byteRead - lastScanPosEnd) >= DownloadChunkSize) || byteToDownload <= 0)
                                             {
                                                 var startScanPos = (int)(lastScanPosEnd == 0 ? lastScanPosStart : (lastScanPosStart - searchEndingBytes.Length));
                                                 scanFoundEnd = searchEngine_End.IndexOf(arr, startScanPos, byteRead);
@@ -294,7 +315,7 @@ sealed class SnowBreakHttpClient : HttpClient
                                     byteRead += chunkRead;
                                     byteToDownload -= chunkRead;
                                     localStream.Write(tmpbuffer, 0, chunkRead);
-                                    if (((byteRead - lastScanPosStart) >= DownloadChunkSize) || byteRead == byteToDownload)
+                                    if (((byteRead - lastScanPosStart) >= DownloadChunkSize) || byteToDownload <= 0)
                                     {
                                         var startScanPos = lastScanPosStart == 0 ? 0 : (lastScanPosStart - searchStartingBytes.Length);
                                         localStream.Position = startScanPos;
@@ -336,7 +357,7 @@ sealed class SnowBreakHttpClient : HttpClient
                                         byteRead += chunkRead;
                                         byteToDownload -= chunkRead;
                                         localStream.Write(tmpbuffer, 0, chunkRead);
-                                        if (((byteRead - lastScanPosEnd) >= DownloadChunkSize) || byteRead == byteToDownload)
+                                        if (((byteRead - lastScanPosEnd) >= DownloadChunkSize) || byteToDownload <= 0)
                                         {
                                             var startScanPos = lastScanPosEnd == 0 ? lastScanPosStart : (lastScanPosStart - searchEndingBytes.Length);
                                             localStream.Position = startScanPos;
