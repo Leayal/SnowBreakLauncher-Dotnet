@@ -195,6 +195,9 @@ sealed class SnowBreakHttpClient : HttpClient
                     byte[]? tmpbuffer = null;
                     try
                     {
+                        // 1MB chunk each pull, if this is too big, around 500KB is optimal choice, too.
+                        // This isn't really matter unless your internet is unstable and timeout may happend before 1MB is fully downloaded.
+                        // By reducing the size, we can meet the time limit per each "Read" operation.
                         const int DownloadChunkSize = 1024 * 1024;
 
                         int byteToDownload = allocateSize, chunkRead = 0, byteRead = 0;
@@ -206,17 +209,16 @@ sealed class SnowBreakHttpClient : HttpClient
                             if (resource.IsMemoryHungry)
                             {
                                 var arr = resource.arr;
-                                while (!cancellationToken.IsCancellationRequested && (chunkRead = responseContentStream.Read(arr, byteRead, Math.Min(byteToDownload, DownloadChunkSize))) != 0)
+                                try
                                 {
-                                    byteRead += chunkRead;
-                                    byteToDownload -= chunkRead;
-                                    if (((byteRead - lastScanPosStart) >= DownloadChunkSize) || byteRead == byteToDownload)
+                                    while (!cancellationToken.IsCancellationRequested && (chunkRead = responseContentStream.Read(arr, byteRead, Math.Min(byteToDownload, DownloadChunkSize))) != 0)
                                     {
-                                        using (var scanStream = new MemoryStream(arr, 0, byteRead, false))
+                                        byteRead += chunkRead;
+                                        byteToDownload -= chunkRead;
+                                        if (((byteRead - lastScanPosStart) >= DownloadChunkSize) || byteToDownload == 0)
                                         {
-                                            var startScanPos = lastScanPosStart == 0 ? 0 : (lastScanPosStart - searchStartingBytes.Length);
-                                            scanStream.Position = startScanPos;
-                                            scanFoundStart = searchEngine_Start.IndexOf(scanStream);
+                                            var startScanPos = (int)(lastScanPosStart == 0 ? 0 : (lastScanPosStart - searchStartingBytes.Length));
+                                            scanFoundStart = searchEngine_Start.IndexOf(arr, startScanPos, byteRead);
 
                                             if (scanFoundStart != -1)
                                             {
@@ -230,14 +232,10 @@ sealed class SnowBreakHttpClient : HttpClient
                                             }
                                         }
                                     }
-                                }
-                                if (lastScanPosStart < byteRead)
-                                {
-                                    using (var scanStream = new MemoryStream(arr, 0, byteRead, false))
+                                    if (lastScanPosStart < byteRead)
                                     {
-                                        var startScanPos = lastScanPosEnd == 0 ? lastScanPosStart : (lastScanPosStart - searchEndingBytes.Length);
-                                        scanStream.Position = startScanPos;
-                                        scanFoundEnd = searchEngine_End.IndexOf(scanStream);
+                                        var startScanPos = (int)(lastScanPosEnd == 0 ? lastScanPosStart : (lastScanPosStart - searchEndingBytes.Length));
+                                        scanFoundEnd = searchEngine_End.IndexOf(arr, startScanPos, byteRead);
 
                                         if (scanFoundEnd != -1)
                                         {
@@ -249,20 +247,16 @@ sealed class SnowBreakHttpClient : HttpClient
                                             lastScanPosEnd = byteRead;
                                         }
                                     }
-                                }
-                                if (scanFoundEnd == -1)
-                                {
-                                    while (!cancellationToken.IsCancellationRequested && (chunkRead = responseContentStream.Read(arr, byteRead, Math.Min(byteToDownload, DownloadChunkSize))) != 0)
+                                    if (scanFoundEnd == -1)
                                     {
-                                        byteRead += chunkRead;
-                                        byteToDownload -= chunkRead;
-                                        if (((byteRead - lastScanPosEnd) >= DownloadChunkSize) || byteRead == byteToDownload)
+                                        while (!cancellationToken.IsCancellationRequested && (chunkRead = responseContentStream.Read(arr, byteRead, Math.Min(byteToDownload, DownloadChunkSize))) != 0)
                                         {
-                                            using (var scanStream = new MemoryStream(arr, 0, byteRead, false))
+                                            byteRead += chunkRead;
+                                            byteToDownload -= chunkRead;
+                                            if (((byteRead - lastScanPosEnd) >= DownloadChunkSize) || byteRead == byteToDownload)
                                             {
-                                                var startScanPos = lastScanPosEnd == 0 ? lastScanPosStart : (lastScanPosStart - searchEndingBytes.Length);
-                                                scanStream.Position = startScanPos;
-                                                scanFoundEnd = searchEngine_End.IndexOf(scanStream);
+                                                var startScanPos = (int)(lastScanPosEnd == 0 ? lastScanPosStart : (lastScanPosStart - searchEndingBytes.Length));
+                                                scanFoundEnd = searchEngine_End.IndexOf(arr, startScanPos, byteRead);
 
                                                 if (scanFoundEnd != -1)
                                                 {
@@ -277,12 +271,16 @@ sealed class SnowBreakHttpClient : HttpClient
                                             }
                                         }
                                     }
-                                }
 
-                                if (scanFoundStart != -1 && scanFoundEnd != -1)
+                                    if (scanFoundStart != -1 && scanFoundEnd != -1)
+                                    {
+                                        var jsonLengthInBytes = (int)((scanFoundEnd + 1) - scanFoundStart);
+                                        officialJsonDataRaw = encodingANSICompat.GetString(arr, (int)scanFoundStart, jsonLengthInBytes);
+                                    }
+                                }
+                                finally
                                 {
-                                    var jsonLengthInBytes = (int)((scanFoundEnd + 1) - scanFoundStart);
-                                    officialJsonDataRaw = encodingANSICompat.GetString(arr, (int)scanFoundStart, jsonLengthInBytes);
+                                    arr = null;
                                 }
                             }
                             else
@@ -358,8 +356,6 @@ sealed class SnowBreakHttpClient : HttpClient
                                     }
                                 }
 
-                                // scanFoundStart = 5314709; scanFoundEnd = 5315283;
-
                                 if (scanFoundStart != -1 && scanFoundEnd != -1)
                                 {
                                     var jsonLengthInBytes = (int)((scanFoundEnd + 1) - scanFoundStart);
@@ -381,6 +377,7 @@ sealed class SnowBreakHttpClient : HttpClient
                                         finally
                                         {
                                             ArrayPool<byte>.Shared.Return(encodeBuffer);
+                                            encodeBuffer = null;
                                         }
                                     }
                                 }
@@ -392,8 +389,9 @@ sealed class SnowBreakHttpClient : HttpClient
                         if (tmpbuffer != null)
                         {
                             ArrayPool<byte>.Shared.Return(tmpbuffer);
+                            tmpbuffer = null;
                         }
-                        resource.Dispose();
+                        Interlocked.Exchange(ref resource, null).Dispose();
                     }
                 }
             }
@@ -401,12 +399,13 @@ sealed class SnowBreakHttpClient : HttpClient
 
         if (officialJsonDataRaw == null)
         {
+            // In case we still can't find manifest from the official launcher.
+            // Fall-back to reading the data from the .json file which exists on the repo.
             OfficialLauncherManifestJsonParseAndMerge(thislauncherManifestData, null, launcherLatestVersion, out _, out var resourceSrc, path_launcherManifestCachedData, null, cancellationToken);
             return resourceSrc;
         }
         else
         {
-            var str = officialJsonDataRaw;
             using (var jsonDoc = JsonDocument.Parse(officialJsonDataRaw, GetDefaultJsonDocumentReaderSettings()))
             {
                 OfficialLauncherManifestJsonParseAndMerge(thislauncherManifestData, jsonDoc, launcherLatestVersion, out var task_writeCache, out var resourceSrc, path_launcherManifestCachedData, officialJsonDataRaw, cancellationToken);
@@ -594,13 +593,13 @@ sealed class SnowBreakHttpClient : HttpClient
         return officialLauncherManifestDataIsOkay;
     }
 
-    sealed class TaskAllocatedResources_FetchResourceURL
+    sealed class TaskAllocatedResources_FetchResourceURL : IDisposable
     {
         [MemberNotNullWhen(true, nameof(arr)), MemberNotNullWhen(false, nameof(contentStream), nameof(fHandle))]
         public bool IsMemoryHungry { get; }
-        public readonly byte[]? arr = null;
-        public readonly FileStream? contentStream = null;
-        public readonly SafeFileHandle? fHandle = null;
+        public readonly byte[]? arr;
+        public readonly FileStream? contentStream;
+        public readonly SafeFileHandle? fHandle;
 
         public TaskAllocatedResources_FetchResourceURL(bool isMemoryHungry, int sizeHint)
         {
@@ -616,8 +615,6 @@ sealed class SnowBreakHttpClient : HttpClient
                 this.contentStream = new FileStream(fHandle, FileAccess.ReadWrite, 0) { Position = 0 };
             }
         }
-
-
 
         public void Dispose()
         {
