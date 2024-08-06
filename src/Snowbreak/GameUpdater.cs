@@ -540,23 +540,35 @@ sealed class GameUpdater
             // Double ensure that we don't get any Pak archives left over from old major releases to cause data collisions.
             if (fixMode)
             {
-                var dataDirectory = mgr.Files.GetFullPath(Path.Join("Game", "Content"));
-                if (Directory.Exists(dataDirectory))
+                static void EncapsuleToEscapeAsyncRule_DeleteUnknownFiles(GameManager mgr, FrozenDictionary<string, PakEntry> remoteFilelist)
                 {
-                    foreach (var filename in Directory.EnumerateFiles(dataDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true, ReturnSpecialDirectories = false, AttributesToSkip = FileAttributes.None, MaxRecursionDepth = 30 }))
+                    var gameDirLength = mgr.FullPathOfGameDirectory.Length;
+                    var dataDirectory = mgr.Files.GetFullPath(Path.Join("Game", "Content"));
+                    ReadOnlySpan<char> directorySeparatorChars = stackalloc char[]
                     {
-                        var mem_relativePath = filename.AsMemory(dataDirectory.Length + 1);
-                        var relativePath = string.Create(mem_relativePath.Length, mem_relativePath, (c, obj) =>
-                        { 
-                            obj.Span.CopyTo(c);
-                            c.Replace('\\', '/');
-                        });
-                        if (!remoteFilelist.ContainsKey(relativePath))
+                        Path.DirectorySeparatorChar,
+                        Path.AltDirectorySeparatorChar,
+                        ' ',
+                        char.MinValue
+                    };
+                    if (Directory.Exists(dataDirectory))
+                    {
+                        foreach (var filename in Directory.EnumerateFiles(dataDirectory, "*", new EnumerationOptions() { RecurseSubdirectories = true, ReturnSpecialDirectories = false, AttributesToSkip = FileAttributes.None, MaxRecursionDepth = 30 }))
                         {
-                            FileSystem.ForceDelete(filename);
+                            var mem_relativePath = filename.AsMemory(gameDirLength).TrimStart(directorySeparatorChars); // Can optimize it by using "filename.AsMemory(gameDirLength + 1);" but we will lost sanitize
+                            var relativePath = string.Create(mem_relativePath.Length, mem_relativePath, (c, obj) =>
+                            {
+                                obj.Span.CopyTo(c);
+                                c.Replace('\\', '/');
+                            });
+                            if (!remoteFilelist.ContainsKey(relativePath))
+                            {
+                                FileSystem.ForceDelete(filename);
+                            }
                         }
                     }
                 }
+                EncapsuleToEscapeAsyncRule_DeleteUnknownFiles(this.manager, remoteFilelist);
             }
             else if (bufferedLocalFileTable.Count != 0)
             {
