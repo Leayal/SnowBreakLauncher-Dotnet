@@ -1,4 +1,5 @@
 ﻿using Leayal.SnowBreakLauncher.Classes;
+using Leayal.SnowBreakLauncher.LeaHelpers;
 using Microsoft.Win32.SafeHandles;
 using System;
 using System.Buffers;
@@ -27,7 +28,7 @@ sealed class SnowBreakHttpClient : HttpClient
         DownloadChunkSize = 1024 * 1024;
 
     private const string TemplateURL_RemoteDataResource = "https://{0}/{1}/PC/updates/", // {0}, {1} was for string.Format method.
-        TemplateURL_LauncherBaseUrl = "https://snowbreak-content.amazingseasuncdn.com/ob202307/",
+        TemplateURL_LauncherBaseUrl = "https://snowbreak-content.amazingseasuncdn.com/ob202307",
         TemplateURL_LauncherBinary = TemplateURL_LauncherBaseUrl + "/launcher/seasun/updates/{0}.exe",
         
         Hardcoded_ScanSettings_StartString = "{\"appUpdateURL\":\"https://snowbreak-content.amazingseasuncdn.com/ob202307/launcher/seasun/updates/\"",
@@ -46,8 +47,8 @@ sealed class SnowBreakHttpClient : HttpClient
     static SnowBreakHttpClient()
     {
         URL_GameClientPredownloadManifest = new Uri("https://snowbreak-dl.amazingseasuncdn.com/pre-release/PC/updates/");
-        URL_GameLauncherNews = new Uri($"{TemplateURL_LauncherBaseUrl}webfile/launcher/launcher-information.json");
-        URL_LauncherLatestVersion = new Uri($"{TemplateURL_LauncherBaseUrl}/launcher/seasun/updates/latest");
+        URL_GameLauncherNews = new Uri(UrlHelper.MakeAbsoluteUrl(TemplateURL_LauncherBaseUrl, "webfile/launcher/launcher-information.json", true));
+        URL_LauncherLatestVersion = new Uri(UrlHelper.MakeAbsoluteUrl(TemplateURL_LauncherBaseUrl, "launcher/seasun/updates/latest", true));
         URL_LauncherManifest = new Uri("https://leayal.github.io/SnowBreakLauncher-Dotnet/publish/v2/launcher-manifest.json");
 
         // We put the config reading here so that the static class still follow .NET lazy static initialization mechanism.
