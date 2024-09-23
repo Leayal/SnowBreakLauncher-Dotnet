@@ -6,6 +6,7 @@ using System;
 using System.Runtime.CompilerServices;
 using Avalonia.Threading;
 using Leayal.SnowBreakLauncher.Snowbreak;
+using Avalonia.Vulkan;
 
 namespace Leayal.SnowBreakLauncher;
 
@@ -45,10 +46,17 @@ class Program
     {
         var builder = AppBuilder.Configure<App>(() => new App(processInstance))
             // The options below will be ignored by Avalonia if the operating system running this launcher on non-Windows OS.
+            .With(new VulkanOptions()
+            {
+#if DEBUG
+                VulkanInstanceCreationOptions = new VulkanInstanceCreationOptions() { UseDebug = true },
+#endif
+                VulkanDeviceCreationOptions = new VulkanDeviceCreationOptions() { PreferDiscreteGpu = true }
+            })
             .With(new Win32PlatformOptions()
             {
-                CompositionMode = new Win32CompositionMode[] { Win32CompositionMode.WinUIComposition /* (Win32CompositionMode)2 This is DirectComposition, a meaningless value, deprecated by WinUIComposition */, Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.RedirectionSurface },
-                RenderingMode = new Win32RenderingMode[] { Win32RenderingMode.AngleEgl, Win32RenderingMode.Wgl, Win32RenderingMode.Software },
+                CompositionMode = new Win32CompositionMode[] { Win32CompositionMode.WinUIComposition, Win32CompositionMode.DirectComposition, Win32CompositionMode.LowLatencyDxgiSwapChain, Win32CompositionMode.RedirectionSurface },
+                RenderingMode = new Win32RenderingMode[] { Win32RenderingMode.Vulkan, Win32RenderingMode.AngleEgl, Win32RenderingMode.Wgl, Win32RenderingMode.Software }
             })
             .UsePlatformDetect()
             .WithInterFont();
