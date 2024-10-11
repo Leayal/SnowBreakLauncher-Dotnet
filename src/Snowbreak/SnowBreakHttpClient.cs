@@ -34,7 +34,7 @@ sealed class SnowBreakHttpClient : HttpClient
         Hardcoded_ScanSettings_StartString = "{\"appUpdateURL\":\"https://snowbreak-content.amazingseasuncdn.com/ob202307/launcher/seasun/updates/\"",
         Hardcoded_ScanSettings_EndString = "}";
 
-
+    
     private static readonly Uri URL_GameClientPredownloadManifest, URL_GameLauncherNews, URL_LauncherLatestVersion, URL_LauncherManifest;
     public static readonly SnowBreakHttpClient Instance;
     private static readonly string[] TemplateURL_RemoteResourceDomainNames =
@@ -52,14 +52,22 @@ sealed class SnowBreakHttpClient : HttpClient
         URL_LauncherManifest = new Uri("https://leayal.github.io/SnowBreakLauncher-Dotnet/publish/v2/launcher-manifest.json");
 
         // We put the config reading here so that the static class still follow .NET lazy static initialization mechanism.
-        var useDoH = (App.Current is App app) ? app.LeaLauncherConfig.Networking_UseDoH : true;
+        var useDoH = true;
+        string? proxyUrl = null;
+        if (App.Current is App app)
+        {
+            useDoH = app.LeaLauncherConfig.Networking_UseDoH;
+            proxyUrl = app.proxyUrl;
+        }
+
+        bool hasProxy = !string.IsNullOrWhiteSpace(proxyUrl);
 
         Instance = new SnowBreakHttpClient(new SocketsHttpHandler()
         {
             AllowAutoRedirect = true,
             AutomaticDecompression = DecompressionMethods.GZip,
-            Proxy = null,
-            UseProxy = false,
+            Proxy = hasProxy ? new WebProxy(proxyUrl) : null,
+            UseProxy = hasProxy,
             UseCookies = true,
         })
         {

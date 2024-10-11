@@ -42,7 +42,7 @@ class Program
 
     // Avalonia configuration, don't remove; also used by visual designer.
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AppBuilder? BuildAvaloniaApp(InstanceController processInstance)
+    public static AppBuilder? BuildAvaloniaApp(InstanceController processInstance, string? proxyUrl)
     {
         var builder = AppBuilder.Configure<App>(() => new App(processInstance))
             // The options below will be ignored by Avalonia if the operating system running this launcher on non-Windows OS.
@@ -88,8 +88,29 @@ class Program
 
         protected override void OnStartupFirstInstance(string[] args)
         {
-            var app = BuildAvaloniaApp(this);
+            string? proxyUrl = null;
+            try
+            {
+                var argCount = args.Length;
+                if (argCount != 0)
+                {
+                    ReadOnlySpan<string> spanOfArgs = args;
+                    for (int i = 0; i < argCount; i++)
+                    {
+                        ref readonly var arg = ref spanOfArgs[i];
+                        if (string.Equals(arg, "--proxy", StringComparison.OrdinalIgnoreCase))
+                        {
+                            proxyUrl = spanOfArgs[++i];
+                        }
+                    }
+
+                }
+            }
+            catch { }
+
+            var app = BuildAvaloniaApp(this, proxyUrl);
             if (app == null) return;
+
             Environment.ExitCode = app.StartWithClassicDesktopLifetime(args, ShutdownMode.OnMainWindowClose);
 
             // When shutting down the launcher, closing the file handles, too.

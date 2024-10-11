@@ -15,6 +15,7 @@ public partial class App : Application
     public readonly OfficialJsonConfiguration LauncherConfig;
     public readonly LeaLauncherConfiguration LeaLauncherConfig;
     internal readonly Program.InstanceController? ProcessInstance;
+    public readonly string? proxyUrl;
 
 #pragma warning disable CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
     public App() : base()
@@ -30,9 +31,12 @@ public partial class App : Application
         this.LeaLauncherConfig = new LeaLauncherConfiguration(Path.GetFullPath("lea-sblauncher.json", rootDir));
     }
 
-    internal App(Program.InstanceController processInstance) : this()
+    internal App(Program.InstanceController processInstance) : this(processInstance, null) { }
+
+    internal App(Program.InstanceController processInstance, string? proxyUrl) : this()
     {
         this.ProcessInstance = processInstance;
+        this.proxyUrl = proxyUrl;
     }
 
     public override void Initialize()

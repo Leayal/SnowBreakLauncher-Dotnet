@@ -52,15 +52,15 @@
     </PackageReference>
 	<PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
     <PackageReference Condition="!$(DefineConstants.Contains('NO_WMI'))" Include="System.Management" Version="8.0.0" />
-    <PackageReference Include="Avalonia" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.3" />
-    <PackageReference Include="MessageBox.Avalonia" Version="3.1.6" />
+    <PackageReference Include="Avalonia" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.4" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.4" />
+    <PackageReference Include="MessageBox.Avalonia" Version="3.1.6.13" />
     <!--"Condition below is needed to remove Avalonia.Diagnostics package from build output in Release configuration." is partially wrong-->
     <!--As of avalon v11.0.0, for whatever reasons, building with configuration Release without this package will simply fail with XAML Parse error (Unable to resolve type SimpleTheme from namespace https://github.com/avaloniaui)-->
     <!--The option to workaround this is not using SimpleTheme, or including this package below to build with SimpleTheme.-->  
-    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.1.3" />  
+    <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.1.4" />  
     <PackageReference Include="System.Reactive" Version="6.0.1" />  
     <PackageReference Include="Tmds.DBus.Protocol" Version="0.20.0" />
   </ItemGroup>
