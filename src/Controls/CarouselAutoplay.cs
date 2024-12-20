@@ -4,6 +4,7 @@ using Avalonia.Animation.Easings;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
+using Leayal.SnowBreakLauncher.Classes;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -40,7 +41,6 @@ namespace Leayal.SnowBreakLauncher.Controls
             var observable = this.carousel.GetObservable(Carousel.IsEffectivelyEnabledProperty);
             this.observeProp = observable.Subscribe(this.OnTargetPropChanged);
         }
-
         private void Carousel_Unloaded(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
         {
             var topLevel = Interlocked.Exchange(ref this.topLevel, null);
