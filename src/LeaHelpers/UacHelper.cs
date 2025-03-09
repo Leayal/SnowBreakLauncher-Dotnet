@@ -13,7 +13,7 @@ using PInvoke = global::Windows.Win32.PInvoke;
 namespace Leayal.Shared.Windows
 {
     /// <summary>A helper class providing convenient methods to read User Account Control (UAC)'s settings of Windows.</summary>
-    [SupportedOSPlatform("windows")]
+    [SupportedOSPlatform("windows5.1.2600")]
     public static class UacHelper
     {
         private const string uacRegistryKey = "Software\\Microsoft\\Windows\\CurrentVersion\\Policies\\System";
@@ -81,7 +81,7 @@ namespace Leayal.Shared.Windows
                     {
                         throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                     }
-                    hProcess = new SafeProcessHandle(handle.Value, true);
+                    hProcess = new SafeProcessHandle(handle, true);
                     // hProcess = OpenProcess(QueryLimitedInformation, false, process.Id);
                     if (hProcess.IsInvalid)
                     {
@@ -98,7 +98,7 @@ namespace Leayal.Shared.Windows
                 {
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
                 }
-                hProcess = new SafeProcessHandle(handle.Value, true);
+                hProcess = new SafeProcessHandle(handle, true);
                 if (hProcess.IsInvalid)
                 {
                     throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());

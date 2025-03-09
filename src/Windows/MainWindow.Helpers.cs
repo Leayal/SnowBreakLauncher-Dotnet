@@ -93,7 +93,6 @@ namespace Leayal.SnowBreakLauncher.Windows
                 CanResize = false,
                 ContentHeader = ex.Message,
                 ContentTitle = "Error",
-                ContentMessage = ex.StackTrace,
                 EnterDefaultButton = ClickEnum.Ok,
                 EscDefaultButton = ClickEnum.Ok,
                 Icon = MsBox.Avalonia.Enums.Icon.Error,
@@ -104,6 +103,8 @@ namespace Leayal.SnowBreakLauncher.Windows
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 SystemDecorations = SystemDecorations.Full
             };
+            var stacktrace = ex.StackTrace;
+            msgBoxParams.ContentMessage = string.IsNullOrEmpty(stacktrace) ? ex.Message : stacktrace;
 
             AdjustManualSize(parent, msgBoxParams, msgBoxParams.SizeToContent);
 
@@ -167,6 +168,9 @@ namespace Leayal.SnowBreakLauncher.Windows
         }
 
         private Task<ButtonResult> ShowYesNoMsgBox(string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
+            => ShowYesNoMsgBox(this, content, title, icon, sizeToContent);
+
+        internal static Task<ButtonResult> ShowYesNoMsgBox(Window parent, string content, string title, Icon icon = MsBox.Avalonia.Enums.Icon.Question, SizeToContent sizeToContent = SizeToContent.WidthAndHeight)
         {
             ArgumentException.ThrowIfNullOrEmpty(content);
             ArgumentException.ThrowIfNullOrEmpty(title);
@@ -186,9 +190,9 @@ namespace Leayal.SnowBreakLauncher.Windows
                 SystemDecorations = SystemDecorations.Full
             };
 
-            AdjustManualSize(this, msgboxparams, sizeToContent);
+            AdjustManualSize(parent, msgboxparams, sizeToContent);
 
-            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(this);
+            return MessageBoxManager.GetMessageBoxStandard(msgboxparams).ShowWindowDialogAsync(parent);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace Leayal.Shared.Windows
     /// <summary>A class provides quick and convenience method that .NET6 APIs doesn't really provide (yet?).</summary>
     public static partial class ProcessInfoHelper
     {
-        [SupportedOSPlatform("windows")]
+        [SupportedOSPlatform("windows6.0.6000")]
         static class Win
         {
             internal static readonly SafeProcessHandle InvalidHandle = new SafeProcessHandle();
@@ -25,7 +25,7 @@ namespace Leayal.Shared.Windows
                 {
                     return InvalidHandle;
                 }
-                return new SafeProcessHandle(handle.Value, true);
+                return new SafeProcessHandle(handle, true);
             }
 
             /// <summary>Registers a callback which will be invoked when the process exits.</summary>
@@ -55,7 +55,7 @@ namespace Leayal.Shared.Windows
                 {
                     return false;
                 }
-                var waitHandle = new ProcessWaitHandle(new SafeWaitHandle(handle.Value, true));
+                var waitHandle = new ProcessWaitHandle(new SafeWaitHandle(handle, true));
                 var registeredWaitHandle = ThreadPool.RegisterWaitForSingleObject(waitHandle, new WaitOrTimerCallback(ProcessWaitedForExit), new Tuple<ProcessWaitHandle, Process, uint, ProcessExitCallback>(waitHandle, process, procId, callback), Timeout.Infinite, true);
                 cancellationToken.Register(obj =>
                 {
@@ -183,14 +183,7 @@ namespace Leayal.Shared.Windows
                 try
                 {
                     uint bufferLength = Convert.ToUInt32(ch.Length - 1);
-                    bool isSuccess;
-                    unsafe
-                    {
-                        fixed (char* c = ch)
-                        {
-                            isSuccess = PInvoke.QueryFullProcessImageName(processHandle, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), new MSWin32.Foundation.PWSTR(c), ref bufferLength);
-                        }
-                    }
+                    var isSuccess = PInvoke.QueryFullProcessImageName(processHandle, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), ch.AsSpan(), ref bufferLength);
                     if (isSuccess)
                     {
                         return new string(ch, 0, Convert.ToInt32(bufferLength));
@@ -204,13 +197,7 @@ namespace Leayal.Shared.Windows
                             {
                                 return null;
                             }
-                            unsafe
-                            {
-                                fixed (char* c = ch)
-                                {
-                                    isSuccess = PInvoke.QueryFullProcessImageName(hProcess, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), new MSWin32.Foundation.PWSTR(c), ref bufferLength);
-                                }
-                            }
+                            isSuccess = PInvoke.QueryFullProcessImageName(hProcess, Unsafe.As<QueryProcessNameType, MSWin32.System.Threading.PROCESS_NAME_FORMAT>(ref dwNameType), ch.AsSpan(), ref bufferLength);
                             if (isSuccess)
                             {
                                 return new string(ch, 0, Convert.ToInt32(bufferLength));

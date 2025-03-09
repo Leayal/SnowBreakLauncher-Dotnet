@@ -55,7 +55,7 @@
 				<Button Grid.Column="2" Margin="0" Padding="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" CornerRadius="0,5,5,0" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
 									x:Name="BtnSettings" Click="BtnSettings_Click" IsEnabled="{Binding #Btn_StartGame.IsEnabled}" ToolTip.Tip="Launcher settings" Width="50">
 					<Button.ContextMenu>
-						<ContextMenu Placement="TopEdgeAlignedRight" Initialized="ExtraContextMenu_Initialized">
+						<ContextMenu Placement="TopEdgeAlignedRight" Initialized="ExtraContextMenu_Initialized" Opened="ExtraContextMenu_Opened">
 							<MenuItem Click="MenuItem_LauncherSettings_Click">
 								<MenuItem.Header>
 									<TextBlock Text="Change Launcher Settings" />
@@ -74,6 +74,11 @@
 							<MenuItem Click="MenuItem_OpenGameDataDirectory_Click">
 								<MenuItem.Header>
 									<TextBlock Text="Open Game Data Directory" />
+								</MenuItem.Header>
+							</MenuItem>
+							<MenuItem x:Name="MenuItem_LocalizationMagicTrick" Click="MenuItem_LocalizationMagicTrick_Click">
+								<MenuItem.Header>
+									<TextBlock Text="Localization Magic Trick for Cultured Players ( ͡° ͜ʖ ͡°)" />
 								</MenuItem.Header>
 							</MenuItem>
 						</ContextMenu>

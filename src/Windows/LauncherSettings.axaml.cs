@@ -22,6 +22,8 @@ public partial class LauncherSettings : Window
             this.CheckBox_AllowFetchingManifestFromOfficial.IsChecked = conf.AllowFetchingOfficialLauncherManifestData;
             this.CheckBox_AllowFetchingManifestFromOfficialInMemory.IsChecked = conf.AllowFetchingOfficialLauncherManifestDataInMemory;
         }
+
+        this.CheckBox_AllowFetchingManifestFromOfficial.IsCheckedChanged += CheckBox_AllowFetchingManifestFromOfficial_IsCheckedChanged;
     }
 
     private void CloseBtn_Click(object? sender, RoutedEventArgs e)
@@ -38,7 +40,6 @@ public partial class LauncherSettings : Window
                 var conf = app.LeaLauncherConfig;
                 var val_CheckBox_Networking_UseDoH = (this.CheckBox_Networking_UseDoH.IsChecked == true);
                 conf.Networking_UseDoH = val_CheckBox_Networking_UseDoH;
-
                 conf.AllowFetchingOfficialLauncherManifestData = (this.CheckBox_AllowFetchingManifestFromOfficial.IsChecked == true);
                 conf.AllowFetchingOfficialLauncherManifestDataInMemory = (this.CheckBox_AllowFetchingManifestFromOfficialInMemory.IsChecked == true);
 
@@ -51,6 +52,23 @@ public partial class LauncherSettings : Window
         catch (Exception ex)
         {
             await MainWindow.ShowErrorMsgBox(this, ex);
+        }
+    }
+
+    private async void CheckBox_AllowFetchingManifestFromOfficial_IsCheckedChanged(object? sender, RoutedEventArgs e)
+    {
+        if (sender is CheckBox cb)
+        {
+            // this.CheckBox_AllowFetchingManifestFromOfficial
+            if (cb.IsChecked != true)
+            {
+                if ((await MainWindow.ShowYesNoMsgBox(this, "I strongly not recommended you to disable this feature."
+                    + Environment.NewLine + "With this feature disabled, the launcher may break and update the game to wrong client version."
+                    + Environment.NewLine + "Are you aware what you are doing and still sure to proceed to disable this feature?", "WARNING", MsBox.Avalonia.Enums.Icon.Question)) != MsBox.Avalonia.Enums.ButtonResult.Yes)
+                {
+                    cb.IsChecked = true;
+                }
+            }
         }
     }
 }

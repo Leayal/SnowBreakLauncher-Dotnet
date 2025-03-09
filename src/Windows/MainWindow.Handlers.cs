@@ -57,12 +57,72 @@ namespace Leayal.SnowBreakLauncher.Windows
 
         private void ExtraContextMenu_Initialized(object? sender, EventArgs e)
         {
+            this.MenuItem_LocalizationMagicTrick.ToggleType = MenuItemToggleType.CheckBox;
             if (!OperatingSystem.IsWindows() && sender is ContextMenu ctxMenu)
             {
                 var linuxWineSettingsBtn = new MenuItem();
                 linuxWineSettingsBtn.Header = new TextBlock() { Text = "Wine Settings" };
                 linuxWineSettingsBtn.Click += this.LinuxWineSettingsBtn_Click;
-                ctxMenu.Items.Add(linuxWineSettingsBtn);
+                var items = ctxMenu.Items;
+                var lastItemIndex = items.IndexOf(this.MenuItem_LocalizationMagicTrick);
+                if (lastItemIndex != -1)
+                {
+                    items.Insert(0, linuxWineSettingsBtn);
+                }
+                else
+                {
+                    items.Add(linuxWineSettingsBtn);
+                }
+            }
+        }
+
+        private void ExtraContextMenu_Opened(object? sender, RoutedEventArgs e)
+        {
+            if (sender is ContextMenu ctxMenu)
+            {
+                bool hasMagicTrick = false;
+                if (GameManager.Instance is GameManager mgr /*mainly to check for null here*/)
+                {
+                    var installationDir = mgr.FullPathOfInstallationDirectory;
+                    if (!installationDir.IsEmpty)
+                    {
+                        // This is bad design. Doing disk I/O on UI thread is against responsiveness design.
+                        // Also ugly if-else.
+                        var magicTrickLocation = Path.Join(installationDir, "localization.txt");
+                        if (File.Exists(magicTrickLocation))
+                        {
+                            using (var fhmagicTrick = File.OpenRead(magicTrickLocation))
+                            using (var textReadermagicTrick = new StreamReader(fhmagicTrick /*, System.Text.Encoding.GetEncoding(1252)*/))
+                            {
+                                var line = textReadermagicTrick.ReadLine();
+                                if (!string.IsNullOrWhiteSpace(line))
+                                {
+                                    var valueSpan = line.AsSpan();
+                                    var i_splitter = valueSpan.IndexOf('=');
+                                    if (i_splitter != -1 && (i_splitter < (valueSpan.Length - 1)))
+                                    {
+                                        var propName = valueSpan.Slice(0, i_splitter).Trim();
+                                        var propValueText = valueSpan.Slice(i_splitter + 1).Trim();
+                                        if (!propName.IsEmpty && !propValueText.IsEmpty)
+                                        {
+                                            if (MemoryExtensions.Equals(propName, "localization", StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                if (int.TryParse(propValueText, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var propValue))
+                                                {
+                                                    if (propValue != 0) /* I don't know if this is correct or not. Mainly because the game may check if it's either 0 or 1, any other numbers may be treated the same meaning as 0 */
+                                                    {
+                                                        hasMagicTrick = true;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                this.MenuItem_LocalizationMagicTrick.IsChecked = hasMagicTrick;
             }
         }
 
@@ -280,6 +340,50 @@ namespace Leayal.SnowBreakLauncher.Windows
             var btn = (source as Button) ?? (args.Source as Button);
             if (btn == null) return;
             if (btn.ContextMenu is ContextMenu ctxMenu) ctxMenu.Open(btn);
+        }
+
+        public void MenuItem_LocalizationMagicTrick_Click(object source, RoutedEventArgs args)
+        {
+            if (source is MenuItem menuItem && GameManager.Instance is GameManager mgr /*mainly to check for null here*/)
+            {
+                var exePath = mgr.GameExecutablePath;
+                if (!string.IsNullOrEmpty(exePath) && File.Exists(exePath) /* Check if the game executable is really existed */)
+                {
+                    // Thankfully, the value is updated before the Click Event invoke the this handler.
+                    // In the other word: Getting IsChecked value in this handler gives "new value" instead of "current value".
+                    var newValue = menuItem.IsChecked;
+
+                    // This is bad design. Doing disk I/O on UI thread is against responsiveness design. Especially on "disk write I/O" operations.
+                    var magicTrickLocation = Path.Join(mgr.FullPathOfInstallationDirectory, "localization.txt");
+                    using (var fhmagicTrick = new FileStream(magicTrickLocation, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite, 4096))
+                    {
+                        // var newStringValue = "localization = " + (newValue ? "1" : "0"); // Does this get optimized by compiler to be more memory-optimized?
+                        var newStringValue = newValue ? "localization = 1" : "localization = 0"; // This is memory-optimized
+
+                        /* The dilema I'm having is that I don't know whether the game actually use ANSI or it uses UTF-8.
+                         * But I'll pick ANSI. Using ANSI encoding should have highest compatibility in most situations.
+                        */
+                        var encoding = System.Text.Encoding.Latin1; // This one is ANSI-compatible.
+                        var byteCount = newStringValue.Length * (encoding.IsSingleByte ? 1 : 2); /* encoding.GetByteCount(newStringValue); */
+                        var ch = System.Buffers.ArrayPool<byte>.Shared.Rent(byteCount + 1);
+                        try
+                        {
+                            byteCount /* fixes the byte count to correct value of the encoded data length */ = encoding.GetBytes(newStringValue, ch);
+                            fhmagicTrick.Position = 0;
+                            fhmagicTrick.Write(ch, 0, byteCount);
+                            if (fhmagicTrick.Length != byteCount) // Best screnario is file's length is already same length.
+                            {
+                                fhmagicTrick.SetLength(byteCount);
+                            }
+                        }
+                        finally
+                        {
+                            System.Buffers.ArrayPool<byte>.Shared.Return(ch);
+                        }
+                        fhmagicTrick.Flush();
+                    }
+                }
+            }
         }
 
         public async void MenuItem_OpenGameDataDirectory_Click(object source, RoutedEventArgs args)

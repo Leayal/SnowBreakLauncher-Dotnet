@@ -119,6 +119,8 @@ namespace Leayal.SnowBreakLauncher.Classes
                 this.WineUseUnixFileSystem = true;
                 this.Networking_UseDoH = true;
                 this.ClientData_EnsureCleanWhenFixing = true;
+                this.AllowFetchingOfficialLauncherManifestData = true;
+                // this.AllowFetchingOfficialLauncherManifestDataInMemory = false;
             }
         }
 
