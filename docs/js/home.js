@@ -120,7 +120,7 @@ import { Octokit } from "https://esm.sh/@octokit/rest";
         
         page_description.textContent = "Below are the 30 recent commits. You can view all commits at "
         const page_description_link = d.createElement("a");
-        page_description_link.href = "https://github.com/Leayal/SnowBreakLauncher-Dotnet/commits/main";
+        page_description_link.href = "https://github.com/Leayal/SnowBreakLauncher-Dotnet/commits/master/";
         page_description_link.target = "_blank";
         page_description_link.textContent = "Github commit log";
         page_description.appendChild(page_description_link);
