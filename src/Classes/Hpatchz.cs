@@ -15,21 +15,27 @@ namespace Leayal.SnowBreakLauncher.Classes
     sealed class Hpatchz
     {
         private readonly HDiffPatch hDiffPatchFile;
+        private readonly string hDiffPath;
 
         public long DiffSize
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.hDiffPatchFile.NewDataSize;
+            get => this.hDiffPatchFile.headerInfo.newDataSize;
         }
 
         public string HDiffPath
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            get => this.hDiffPatchFile.diffPath;
+            get
+            {
+                // if (this.hDiffPatchFile.diffStream is FileStream fs) return fs.Name;
+                return this.hDiffPath;
+            }
         }
 
         public Hpatchz(string hDiffFile)
         {
+            this.hDiffPath = hDiffFile;
             this.hDiffPatchFile = new HDiffPatch(hDiffFile);
         }
 
@@ -50,7 +56,7 @@ namespace Leayal.SnowBreakLauncher.Classes
                 if (obj == null) throw new InvalidOperationException(); // Can't be here anyway
                 var (myself, originalFile, outputFile, cancellation) = ((Tuple<Hpatchz, string, string, CancellationToken>)obj);
 
-                myself.hDiffPatchFile.Patch(originalFile, outputFile, cancellation);
+                myself.hDiffPatchFile.Patch(originalFile, outputFile, true, cancellation);
 
             }, new Tuple<Hpatchz, string, string, CancellationToken> (this, originalFile, outputFile, cancellation), cancellation, TaskCreationOptions.LongRunning, TaskScheduler.Current ?? TaskScheduler.Default);
         }
