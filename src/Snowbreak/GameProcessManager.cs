@@ -11,6 +11,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.Versioning;
 using System.Runtime.CompilerServices;
 using Leayal.SnowBreakLauncher.Classes;
+using System.ComponentModel;
 
 namespace Leayal.SnowBreakLauncher.Snowbreak;
 
