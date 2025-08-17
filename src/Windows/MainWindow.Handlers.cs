@@ -257,11 +257,20 @@ namespace Leayal.SnowBreakLauncher.Windows
                 else
                 {
                     this.GameStartButtonState = GameStartButtonState.CheckingForUpdates;
-                    var hasUpdate = await gameMgr.Updater.CheckForUpdatesAsync();
+                    bool? hasUpdate;
+                    try
+                    {
+                        hasUpdate = await gameMgr.Updater.CheckForUpdatesAsync();
+                    }
+                    catch
+                    {
+                        hasUpdate = null;
+                    }
                     this.GameStartButtonState = hasUpdate switch
                     {
                         true => GameStartButtonState.RequiresUpdate,
-                        _ => GameStartButtonState.CanStartGame
+                        false => GameStartButtonState.CanStartGame,
+                        _ => GameStartButtonState.CheckForUpdatesFailed
                     };
                 }
             }
@@ -592,7 +601,19 @@ namespace Leayal.SnowBreakLauncher.Windows
                                 try
                                 {
                                     this.GameStartButtonState = GameStartButtonState.CheckingForUpdates;
-                                    if (await gameMgr.Updater.CheckForUpdatesAsync())
+
+                                    bool? hasUpdate;
+                                    try
+                                    {
+                                        hasUpdate = await gameMgr.Updater.CheckForUpdatesAsync();
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        hasUpdate = null;
+                                        this.GameStartButtonState = GameStartButtonState.CheckForUpdatesFailed;
+                                        if (ex is not OperationCanceledException) await this.ShowErrorMsgBox(ex);
+                                    }
+                                    if (hasUpdate == true)
                                     {
                                         if ((await ShowYesNoMsgBox("Your game client seems to be out-dated. Do you want to update it now?", "Confirmation")) == MsBox.Avalonia.Enums.ButtonResult.Yes)
                                         {
@@ -604,7 +625,7 @@ namespace Leayal.SnowBreakLauncher.Windows
                                             this.GameStartButtonState = GameStartButtonState.RequiresUpdate;
                                         }
                                     }
-                                    else
+                                    else if (hasUpdate == false)
                                     {
                                         this.GameStartButtonState = GameStartButtonState.StartingGame;
                                         try
@@ -644,6 +665,29 @@ namespace Leayal.SnowBreakLauncher.Windows
                             else
                             {
                                 await this.PerformGameClientUpdate(gameMgr);
+                            }
+                        }
+                    }
+                    break;
+                case GameStartButtonState.CheckForUpdatesFailed:
+                    {
+                        if (GameManager.Instance is GameManager gameMgr)
+                        {
+                            this.GameStartButtonState = GameStartButtonState.CheckingForUpdates;
+
+                            try
+                            {
+                                var hasUpdate = await gameMgr.Updater.CheckForUpdatesAsync();
+                                this.GameStartButtonState = hasUpdate switch
+                                {
+                                    true => GameStartButtonState.RequiresUpdate,
+                                    _ => GameStartButtonState.CanStartGame
+                                };
+                            }
+                            catch (Exception ex)
+                            {
+                                this.GameStartButtonState = GameStartButtonState.CheckForUpdatesFailed;
+                                if (ex is not OperationCanceledException) await this.ShowErrorMsgBox(ex);
                             }
                         }
                     }

@@ -10,7 +10,10 @@ public enum GameStartButtonState
     CanStartGame,
     StartingGame,
     WaitingForGameExit,
+
     // I seriously don't know what this should be for, the most generic and vague one, implying the launcher is "doing something" but unsure what to say/show to user.
     // Unused value for now.
-    PreparingGeneric
+    PreparingGeneric,
+
+    CheckForUpdatesFailed
 }

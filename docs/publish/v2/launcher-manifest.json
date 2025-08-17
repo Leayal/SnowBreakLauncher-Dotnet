@@ -1,12 +1,13 @@
 {
 	"domains": [
 		"snowbreak-dl.amazingseasuncdn.com",
-		"snowbreak-dl-cy.amazingseasuncdn.com",
-		"snowbreak-dl-akm.amazingseasuncdn.com"
+		"snowbreak-dl-akm.amazingseasuncdn.com",
+		"snowbreak-dl-cy.amazingseasuncdn.com"
 	],
 	"templateURL_RemoteDataResource": "https://{0}/{1}/PC/updates/",
-	"default": "https://{0}/87670a6d6136f355967edfd6175eea25/PC/updates/",
+	"default": "https://{0}/d600db9654fdbf29cb734c885ea5ca67/PC/updates/",
 	"overrides": {
+		"3.0.0": "https://{0}/d600db9654fdbf29cb734c885ea5ca67/PC/updates/",
 		"2.6.0": "https://{0}/87670a6d6136f355967edfd6175eea25/PC/updates/",
 		"2.2.0": "https://{0}/6d4df694febc8b0ca7afaa4942446d70/PC/updates/",
 		"2.1.0": "https://{0}/7e3b9ed3a0529473c41e8c7d38ecc4f7/PC/updates/",

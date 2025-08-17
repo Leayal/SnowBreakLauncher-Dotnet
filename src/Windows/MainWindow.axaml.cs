@@ -147,6 +147,16 @@ public partial class MainWindow : Window
 
                         window.BtnGameStart_Page.SelectedIndex = 0;
                         break;
+                    case GameStartButtonState.CheckForUpdatesFailed:
+                        window.Btn_StartGame.IsEnabled = true;
+                        window.ProgressBar_Main.IsIndeterminate = false;
+                        window.ProgressBar_Main.IsVisible = false;
+                        window.BtnText_StartGame.Text = "Failed to check for game client updates";
+
+                        window.BtnText_StartGame.UpdateLayout();
+
+                        window.BtnGameStart_Page.SelectedIndex = 0;
+                        break;
                     default:
                         window.Btn_StartGame.IsEnabled = false;
                         window.ProgressBar_Main.IsIndeterminate = true;

@@ -40,8 +40,8 @@ sealed class SnowBreakHttpClient : HttpClient
     private static readonly string[] TemplateURL_RemoteResourceDomainNames =
     {
         "snowbreak-dl.amazingseasuncdn.com",
-        "snowbreak-dl-cy.amazingseasuncdn.com",
-        "snowbreak-dl-akm.amazingseasuncdn.com"
+        "snowbreak-dl-akm.amazingseasuncdn.com",
+        "snowbreak-dl-cy.amazingseasuncdn.com"
     };
 
     static SnowBreakHttpClient()
@@ -667,21 +667,24 @@ sealed class SnowBreakHttpClient : HttpClient
             allowFetchingOfficialLauncherManifestDataInMemory = app.LeaLauncherConfig.AllowFetchingOfficialLauncherManifestDataInMemory;
         }
         var URLs_GameClientPCData = await this.FetchResourceURL(allowFetchingOfficialLauncherManifestData, allowFetchingOfficialLauncherManifestDataInMemory, cancellationToken);
+        HttpRequestException? lastException = null;
         foreach (var URL_GameClientPCData in URLs_GameClientPCData)
         {
             try
             {
                 return await this.Inner_GetGameClientManifestAsync(URL_GameClientPCData, cancellationToken);
             }
-            // If error 404, attempt to try on the different domain name with the same resource path.
-            // Otherwise, throw error immediately
-            catch (HttpRequestException ex) when (ex.StatusCode != HttpStatusCode.NotFound)
+            // Retries regardless, as long as it's an Internet error.
+            catch (HttpRequestException ex)
             {
-                throw;
+                lastException = ex;
             }
         }
-        // If we reach here, meaning all the domain name gives the same error 404.
-        throw new HttpRequestException(null, null, HttpStatusCode.NotFound);
+
+        if (lastException != null) throw lastException;
+
+        // If we reach here, we don't even know what has gone wrong. We cheated ourselves as we blame it on the remote server instead.
+        throw new HttpRequestException(null, null, HttpStatusCode.InternalServerError);
     }
 
     public Task<GameClientManifestData> GetGamePredownloadManifestAsync(CancellationToken cancellationToken = default)
