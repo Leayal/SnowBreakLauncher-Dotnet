@@ -1,3 +1,6 @@
+# NOTICE
+## The project has been discontinued. Anyone can fork and do whatever you want with the source code.
+
 # SnowBreakLauncher-Dotnet
  A custom launcher for [SnowBreak: Containment Zone](https://snowbreak.amazingseasun.com/), written in C# of .NET8.
 
